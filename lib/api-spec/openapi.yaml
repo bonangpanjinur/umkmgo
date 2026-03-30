@@ -1,22 +1,37 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: UMKM Go API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: stores
+    description: Store management
+  - name: products
+    description: Product catalog management
+  - name: categories
+    description: Business categories
+  - name: analytics
+    description: Analytics and statistics
+  - name: admin
+    description: Admin dashboard operations
+  - name: tickets
+    description: Support tickets
+  - name: flags
+    description: Feature flags
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +39,649 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout user
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List all business categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /stores:
+    get:
+      operationId: listStores
+      tags: [stores]
+      summary: List stores (admin or own)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated stores
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreListResponse"
+    post:
+      operationId: createStore
+      tags: [stores]
+      summary: Create a new store (onboarding)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStoreRequest"
+      responses:
+        "201":
+          description: Store created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stores/my:
+    get:
+      operationId: getMyStore
+      tags: [stores]
+      summary: Get current user's store
+      responses:
+        "200":
+          description: User's store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+        "404":
+          description: No store found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stores/{slug}:
+    get:
+      operationId: getStoreBySlug
+      tags: [stores]
+      summary: Get public store by slug (storefront)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public store with products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicStore"
+        "404":
+          description: Store not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateStore
+      tags: [stores]
+      summary: Update store
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStoreRequest"
+      responses:
+        "200":
+          description: Updated store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List products for current user's store
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Product list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a new product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    put:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /analytics/dashboard:
+    get:
+      operationId: getDashboardStats
+      tags: [analytics]
+      summary: Get user dashboard statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get global admin statistics
+      responses:
+        "200":
+          description: Admin global stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: List all users (admin)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, suspended]
+        - name: tier
+          in: query
+          schema:
+            type: string
+            enum: [free, pro, enterprise]
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserListResponse"
+
+  /admin/users/{id}/suspend:
+    post:
+      operationId: suspendUser
+      tags: [admin]
+      summary: Suspend a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User suspended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /admin/users/{id}/unsuspend:
+    post:
+      operationId: unsuspendUser
+      tags: [admin]
+      summary: Unsuspend a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User unsuspended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /admin/revenue:
+    get:
+      operationId: getAdminRevenue
+      tags: [admin]
+      summary: Get revenue data (admin)
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, year]
+            default: month
+      responses:
+        "200":
+          description: Revenue data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueData"
+
+  /admin/health:
+    get:
+      operationId: getPlatformHealth
+      tags: [admin]
+      summary: Get platform health metrics
+      responses:
+        "200":
+          description: Platform health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformHealth"
+
+  /admin/logs:
+    get:
+      operationId: getAuditLogs
+      tags: [admin]
+      summary: Get audit logs
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: actor
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogListResponse"
+
+  /tickets:
+    get:
+      operationId: listTickets
+      tags: [tickets]
+      summary: List support tickets
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, in_progress, resolved, closed]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high, critical]
+      responses:
+        "200":
+          description: Tickets list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketListResponse"
+    post:
+      operationId: createTicket
+      tags: [tickets]
+      summary: Create a support ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTicketRequest"
+      responses:
+        "201":
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+
+  /tickets/{id}:
+    get:
+      operationId: getTicket
+      tags: [tickets]
+      summary: Get ticket detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ticket detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+    put:
+      operationId: updateTicket
+      tags: [tickets]
+      summary: Update ticket (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTicketRequest"
+      responses:
+        "200":
+          description: Updated ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+
+  /flags:
+    get:
+      operationId: listFeatureFlags
+      tags: [flags]
+      summary: List feature flags (admin)
+      responses:
+        "200":
+          description: Feature flags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeatureFlag"
+    post:
+      operationId: createFeatureFlag
+      tags: [flags]
+      summary: Create feature flag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeatureFlagRequest"
+      responses:
+        "201":
+          description: Feature flag created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeatureFlag"
+
+  /flags/{id}:
+    put:
+      operationId: updateFeatureFlag
+      tags: [flags]
+      summary: Update feature flag
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFeatureFlagRequest"
+      responses:
+        "200":
+          description: Updated flag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeatureFlag"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +692,784 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+      required:
+        - name
+        - email
+        - password
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [user, admin, super_admin]
+        tier:
+          type: string
+          enum: [free, pro, enterprise]
+        status:
+          type: string
+          enum: [active, suspended]
+        createdAt:
+          type: string
+          format: date-time
+        hasStore:
+          type: boolean
+      required:
+        - id
+        - name
+        - email
+        - role
+        - tier
+        - status
+        - createdAt
+        - hasStore
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required:
+        - user
+        - token
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        icon:
+          type: string
+        description:
+          type: string
+      required:
+        - id
+        - name
+        - icon
+
+    Store:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: string
+        categoryName:
+          type: string
+        whatsapp:
+          type: string
+        logoUrl:
+          type: string
+        theme:
+          type: string
+          enum: [modern, classic]
+        userId:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        productCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - slug
+        - categoryId
+        - userId
+        - theme
+        - status
+        - productCount
+        - createdAt
+
+    PublicStore:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        categoryName:
+          type: string
+        whatsapp:
+          type: string
+        logoUrl:
+          type: string
+        theme:
+          type: string
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+      required:
+        - id
+        - name
+        - slug
+        - products
+
+    CreateStoreRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: string
+        whatsapp:
+          type: string
+        logoUrl:
+          type: string
+        theme:
+          type: string
+          enum: [modern, classic]
+      required:
+        - name
+        - slug
+        - categoryId
+
+    UpdateStoreRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: string
+        whatsapp:
+          type: string
+        logoUrl:
+          type: string
+        theme:
+          type: string
+          enum: [modern, classic]
+
+    StoreListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Store"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        storeId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        imageUrl:
+          type: string
+        isAvailable:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - storeId
+        - name
+        - price
+        - isAvailable
+        - sortOrder
+        - createdAt
+
+    CreateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        imageUrl:
+          type: string
+        isAvailable:
+          type: boolean
+      required:
+        - name
+        - price
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        imageUrl:
+          type: string
+        isAvailable:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    ProductListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    DashboardStats:
+      type: object
+      properties:
+        visitors:
+          type: integer
+        orders:
+          type: integer
+        revenue:
+          type: number
+        conversionRate:
+          type: number
+        recentOrders:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              productName:
+                type: string
+              amount:
+                type: number
+              date:
+                type: string
+            required:
+              - id
+              - productName
+              - amount
+              - date
+      required:
+        - visitors
+        - orders
+        - revenue
+        - conversionRate
+        - recentOrders
+
+    AdminStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        activeUsers:
+          type: integer
+        mrr:
+          type: number
+        churnRate:
+          type: number
+        conversionRate:
+          type: number
+        arpu:
+          type: number
+        totalRevenue:
+          type: number
+        signupTrend:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              count:
+                type: integer
+            required:
+              - date
+              - count
+        tierDistribution:
+          type: object
+          properties:
+            free:
+              type: integer
+            pro:
+              type: integer
+            enterprise:
+              type: integer
+          required:
+            - free
+            - pro
+            - enterprise
+        topStores:
+          type: array
+          items:
+            type: object
+            properties:
+              storeName:
+                type: string
+              revenue:
+                type: number
+              orders:
+                type: integer
+            required:
+              - storeName
+              - revenue
+              - orders
+      required:
+        - totalUsers
+        - activeUsers
+        - mrr
+        - churnRate
+        - conversionRate
+        - arpu
+        - totalRevenue
+        - signupTrend
+        - tierDistribution
+        - topStores
+
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        storeName:
+          type: string
+        tier:
+          type: string
+          enum: [free, pro, enterprise]
+        status:
+          type: string
+          enum: [active, suspended]
+        revenue:
+          type: number
+        joinDate:
+          type: string
+          format: date-time
+        productCount:
+          type: integer
+      required:
+        - id
+        - name
+        - email
+        - tier
+        - status
+        - revenue
+        - joinDate
+
+    AdminUserListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUser"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    RevenueData:
+      type: object
+      properties:
+        totalRevenue:
+          type: number
+        mrr:
+          type: number
+        mrrGrowth:
+          type: number
+        paymentSuccessRate:
+          type: number
+        avgOrderValue:
+          type: number
+        trend:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              revenue:
+                type: number
+            required:
+              - date
+              - revenue
+        byTier:
+          type: object
+          properties:
+            free:
+              type: number
+            pro:
+              type: number
+            enterprise:
+              type: number
+          required:
+            - free
+            - pro
+            - enterprise
+        recentTransactions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              userEmail:
+                type: string
+              amount:
+                type: number
+              tier:
+                type: string
+              status:
+                type: string
+              date:
+                type: string
+            required:
+              - id
+              - userEmail
+              - amount
+              - tier
+              - status
+              - date
+      required:
+        - totalRevenue
+        - mrr
+        - mrrGrowth
+        - paymentSuccessRate
+        - avgOrderValue
+        - trend
+        - byTier
+        - recentTransactions
+
+    PlatformHealth:
+      type: object
+      properties:
+        uptime:
+          type: number
+        errorRate:
+          type: number
+        avgResponseTime:
+          type: number
+        dbCpu:
+          type: number
+        dbMemory:
+          type: number
+        storageUsed:
+          type: number
+        storageTotal:
+          type: number
+        services:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              status:
+                type: string
+                enum: [operational, degraded, down]
+              latency:
+                type: number
+            required:
+              - name
+              - status
+              - latency
+      required:
+        - uptime
+        - errorRate
+        - avgResponseTime
+        - dbCpu
+        - dbMemory
+        - storageUsed
+        - storageTotal
+        - services
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        actor:
+          type: string
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        status:
+          type: string
+          enum: [success, failed]
+        details:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - actor
+        - action
+        - resourceType
+        - status
+        - createdAt
+
+    AuditLogListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        userEmail:
+          type: string
+        subject:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        status:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+        assignedTo:
+          type: string
+        response:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - userEmail
+        - subject
+        - description
+        - priority
+        - status
+        - createdAt
+
+    CreateTicketRequest:
+      type: object
+      properties:
+        subject:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+      required:
+        - subject
+        - description
+        - priority
+
+    UpdateTicketRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [open, in_progress, resolved, closed]
+        assignedTo:
+          type: string
+        response:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+
+    TicketListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Ticket"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    FeatureFlag:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: boolean
+        rolloutPercent:
+          type: integer
+        tier:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - status
+        - rolloutPercent
+        - createdAt
+
+    CreateFeatureFlagRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: boolean
+        rolloutPercent:
+          type: integer
+        tier:
+          type: string
+        description:
+          type: string
+      required:
+        - name
+
+    UpdateFeatureFlagRequest:
+      type: object
+      properties:
+        status:
+          type: boolean
+        rolloutPercent:
+          type: integer
+        tier:
+          type: string
+        description:
+          type: string

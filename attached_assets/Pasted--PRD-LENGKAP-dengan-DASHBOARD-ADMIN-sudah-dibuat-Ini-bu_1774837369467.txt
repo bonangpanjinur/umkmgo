@@ -1,0 +1,568 @@
+✅ PRD LENGKAP dengan DASHBOARD ADMIN sudah dibuat. Ini bukan hanya untuk user UMKM, tapi juga admin panel untuk manage platform, monitor users, analytics global, dan support.
+📄 PRD UMKM GO - EXTENDED VERSION (User + Admin Dashboard)
+RINGKASAN EKSEKUTIF
+UMKM Go adalah platform SaaS multi-tenant dengan 2 interfaces:
+User Interface - UMKM owner membuat & manage toko
+Admin Dashboard - Tim UMKM Go manage platform, users, revenue, support
+1. BACKGROUND & PROBLEM
+Problem Statement
+85% UMKM Indonesia tidak punya website ()
+Biaya website professional = Rp 5-20 juta (tidak terjangkau)
+Platform existing = kompleks untuk pemula
+Admin challenges: sulit monitor 10k+ tenant, handle support, optimize revenue
+Market Opportunity
+text
+TAM: Rp 500 triliun
+SOM: Rp 1-5 triliun (user growth model)
+Admin tools enable: 10x faster scaling
+2. VISI & TUJUAN
+Visi
+"Setiap UMKM Indonesia punya website profesional 5 menit. Tim UMKM Go kelola platform dengan smart analytics & automation."
+Tujuan
+User side: Mudah bikin toko, revenue tumbuh
+Admin side: Monitor 100k+ tenant, optimize revenue, manage support efisien
+3. PERSONAS (User + Admin)
+User Persona 1: "Bambang - UMKM Owner"
+text
+Umur: 30-50
+Usaha: Rental mobil, makanan, jasa wisata
+Tech skill: Beginner
+Goal: Jualan online + track order
+User Persona 2: "Siti - Operator"
+text
+Umur: 20-30
+Role: Input produk, manage konten
+Goal: Mudah manage toko
+Admin Persona: "Arif - Platform Manager"
+text
+Role: CEO/Founder + Head of Growth
+Responsibility: User growth, revenue, support, platform health
+Goal: Monitor 10k+ users, optimize metrics, handle escalations
+4. SCOPE PRODUK (User + Admin)
+✅ In Scope - USER SIDE (MVP)
+Auth: email + Google OAuth
+Onboarding 5 step
+Catalog CRUD (14 kategori)
+Multi-tenant storefront
+2 themes
+Pricing 3 tiers
+MIDTRANS payment
+Basic analytics
+✅ In Scope - ADMIN SIDE (MVP)
+Admin login (restricted access)
+User management (list, view, suspend)
+Global analytics dashboard
+Revenue monitoring
+Support tickets (basic)
+Platform health metrics
+Feature flags & configuration
+Logs & audit trail
+❌ Out of Scope
+Advanced CRM features
+Marketplace admin
+Advanced reporting (Phase 2)
+5. USER INTERFACE (Existing)
+Landing Page
+text
+Hero: "Buat website toko 5 menit"
+CTA: "Mulai Gratis"
+Features: 6 cards
+Pricing: Free/Pro/Enterprise
+Testimonial: 3-5 UMKM sukses
+FAQ: 5 pertanyaan umum
+Auth Pages
+text
+Register: email + password + Google
+Login: email/Google
+Forgot Password: email reset
+Onboarding Wizard (5 steps)
+text
+1. Nama toko → slug auto-generate
+2. Kategori (14 pilihan)
+3. WA number
+4. Logo upload
+5. Selesai + subdomain live
+User Dashboard
+text
+Top bar: Store name + menu + notifikasi
+Stats: 4 cards (visitor, order, revenue, conversion)
+Quick actions: Add product, Change theme, Upgrade plan
+Sidebar: Catalog, Themes, Domains, Billing, Settings
+Catalog Management
+text
+Product list + search + filter
+Add/Edit/Delete dengan dynamic form
+Drag & drop reorder
+Bulk actions
+Storefront
+text
+/:storeSlug → Hero + Product grid + WA button
+Responsive mobile-first
+Multi-tenant isolation
+Billing & Subscription
+text
+Current plan display
+Upgrade button → MIDTRANS checkout
+Invoice history
+Payment method
+Billing address
+6. ADMIN DASHBOARD (NEW - CRITICAL)
+6.1 Admin Login & Authentication
+Requirement:
+Restricted admin access (email whitelist atau OAuth specific domain)
+2FA untuk security
+Session timeout 30 menit
+Audit log semua admin actions
+Acceptance Criteria:
+text
+✅ Admin dapat login dengan 2FA
+✅ Non-admin tidak bisa akses /admin
+✅ 2FA code expire 5 menit
+✅ Failed login log tercatat
+✅ Session timeout enforce
+6.2 User Management
+Requirement:
+List semua users dengan filter (status, tier, join date)
+View user detail (email, toko, subscription, revenue)
+Suspend/unsuspend user
+Force reset password
+Bulk actions (export, suspend)
+Search by email/store name
+UI:
+text
+Table: User ID | Email | Store Name | Tier | Revenue | Join Date | Status | Actions
+Filter: Status (active/suspended), Tier (Free/Pro), Join date range
+Actions: View, Suspend, Reset password, Email user
+Bulk: Export CSV, Bulk suspend
+Acceptance Criteria:
+text
+✅ Admin dapat view semua users
+✅ Suspend action → user kehilangan access
+✅ Email notification sent ke suspended user
+✅ Bulk export CSV works
+✅ Search response < 500ms
+6.3 Global Analytics Dashboard
+Requirement:
+Real-time metrics: total users, active users, revenue today/week/month
+Growth charts: user signup trend, MRR trend
+Tier breakdown: Free/Pro/Enterprise distribution
+Top stores by revenue
+Churn rate, conversion rate
+Geographic distribution (provinsi)
+Metrics:
+text
+KPI Cards:
+- Total Users
+- Active Users (30 hari)
+- MRR (Monthly Recurring Revenue)
+- Churn Rate (%)
+- Free-to-Pro conversion (%)
+- Average Revenue Per User
+
+Charts:
+- Signup trend (daily/weekly/monthly)
+- MRR trend
+- Retention curve
+- Tier distribution pie chart
+- Revenue by kategori bisnis
+- Top 10 stores by revenue
+- Geographic heatmap Indonesia
+Acceptance Criteria:
+text
+✅ Dashboard load < 2s
+✅ Metrics real-time updated (< 1 menit delay)
+✅ Charts interactive (zoom, drill-down)
+✅ Export CSV/PDF untuk reports
+✅ Historical data available 1 tahun
+6.4 Revenue Monitoring
+Requirement:
+Revenue dashboard per tier
+MIDTRANS transaction history
+Payment success/failed rate
+Revenue forecast
+Customer LTV analysis
+Churn revenue impact
+UI:
+text
+Cards:
+- Total Revenue (this month)
+- MRR vs last month
+- Payment success rate (%)
+- Average order value
+- Revenue by tier pie chart
+
+Table:
+- Recent transactions (MIDTRANS)
+- User | Amount | Tier | Status | Date | Action (refund)
+
+Charts:
+- Revenue trend
+- Forecast (linear regression)
+- Revenue by kategori
+Acceptance Criteria:
+text
+✅ Revenue accurate vs MIDTRANS API
+✅ Refund processing works (manual trigger)
+✅ Revenue forecast > 80% accuracy
+✅ Lag < 5 menit (reconciliation)
+6.5 Support Tickets / Help Desk
+Requirement:
+Ticketing system untuk user support requests
+Ticket status: open/in-progress/resolved/closed
+Priority: low/medium/high/critical
+Assign ticket ke admin
+Email notifications
+Ticket history & resolution time tracking
+Auto-reply template
+UI:
+text
+Ticket List:
+- ID | User | Subject | Priority | Status | Assigned | Date | Actions
+
+Ticket Detail:
+- User info
+- Conversation thread
+- Attachments
+- Status toggle
+- Assign dropdown
+- Response box (textarea)
+- Email notify user
+
+Quick actions:
+- Create ticket
+- Assign to me
+- Resolve
+- Escalate
+Acceptance Criteria:
+text
+✅ User dapat create ticket (in-app atau email)
+✅ Admin notified new ticket
+✅ Ticket resolve notification ke user
+✅ Response time < 24 jam SLA
+✅ Ticket search works
+6.6 Platform Health & Monitoring
+Requirement:
+Uptime status (website, Supabase, MIDTRANS)
+Error rate monitoring
+Database query performance
+API response time
+Disk storage usage
+Alert system
+Metrics:
+text
+- Uptime %
+- Error rate (%)
+- Avg API response time (ms)
+- Database CPU/Memory usage
+- Storage usage (GB)
+- Daily active users trend
+Acceptance Criteria:
+text
+✅ Uptime monitoring real-time
+✅ Alert trigger jika error rate > 5%
+✅ Admin notified SMS/email critical issue
+✅ Historical data > 90 hari
+6.7 Feature Flags & Configuration
+Requirement:
+Enable/disable features per user/tier
+A/B testing toggle
+Pricing configuration update
+Feature release control
+Rollback capability
+UI:
+text
+Feature list:
+- Feature name | Status (on/off) | Tier | Rollout % | Actions
+
+Config:
+- Pricing tiers editable (Free/Pro/Enterprise)
+- Features per tier
+- Feature limits per tier
+- Payment provider config
+Acceptance Criteria:
+text
+✅ Feature flag change apply < 5 menit
+✅ Rollout % control (0-100%)
+✅ Pricing change effective untuk new subscriptions
+✅ A/B test tracking works
+6.8 Logs & Audit Trail
+Requirement:
+Admin action logging (who, what, when, where)
+User activity logging (login, payment, suspend)
+System event logging (errors, deployments)
+Audit trail searchable & downloadable
+Retention 2 tahun
+UI:
+text
+Log viewer:
+- Timestamp | Actor | Action | Resource | Status | Details
+
+Filter:
+- Date range
+- Actor (admin email)
+- Action type (create, update, delete, suspend)
+- Resource type (user, store, subscription)
+- Status (success, failed)
+
+Export: CSV/JSON
+Acceptance Criteria:
+text
+✅ All admin actions logged
+✅ Searchable by any field
+✅ Cannot be modified retroactively
+✅ Retention policy enforced
+6.9 Content Management
+Requirement:
+Edit landing page content
+Blog management
+Email templates
+Help center articles
+Announcements to users
+UI:
+text
+- Landing page editor (WYSIWYG)
+- Blog post list + create
+- Email template editor
+- Announcement banner
+6.10 Reports & Export
+Requirement:
+Generate custom reports
+Schedule automated reports (email)
+Export user data
+Revenue breakdown reports
+Churn analysis
+PDF/CSV export
+Reports:
+text
+- Monthly revenue report
+- User growth report
+- Churn analysis
+- Top performing stores
+- Feature usage report
+- Support ticket summary
+7. TECHNICAL ARCHITECTURE
+Frontend
+text
+User: Next.js pages (storefront, dashboard, billing)
+Admin: Next.js admin pages (/admin/*)
+Auth: Supabase auth + admin role check
+Backend
+text
+API routes:
+- /api/users/* (admin only)
+- /api/analytics/* (admin only)
+- /api/tickets/* (admin + user)
+- /api/stores/* (owner + admin)
+- /api/products/* (owner + admin)
+Database
+text
+Core tables: users, categories, stores, products, subscriptions
+Admin tables: admin_users, support_tickets, admin_logs, feature_flags
+Analytics: analytics_events, revenue_transactions
+Admin Access Control
+text
+Roles:
+- super_admin (all access)
+- support_admin (user support only)
+- analytics_admin (view only)
+- finance_admin (billing only)
+
+RLS policies filter based on admin role
+8. ADMIN USER STORIES
+Story 1: Admin dapat monitor platform health
+text
+AS A: Platform admin
+I WANT TO: lihat uptime, error rate, performance
+SO THAT: saya bisa detect & fix issues cepat
+
+Acceptance:
+✅ Dashboard load real-time metrics
+✅ Alert SMS jika downtime
+✅ Historical data > 90 hari
+Story 2: Admin dapat manage users
+text
+AS A: Support admin
+I WANT TO: suspend user, reset password, view detail
+SO THAT: saya bisa handle user issues efisien
+
+Acceptance:
+✅ Suspend action instant
+✅ Email notification sent
+✅ Bulk actions available
+Story 3: Admin dapat monitor revenue
+text
+AS A: Finance admin
+I WANT TO: lihat MRR, churn, LTV
+SO THAT: saya bisa optimize revenue & forecast
+
+Acceptance:
+✅ Revenue accurate vs MIDTRANS
+✅ Forecast available
+✅ Breakdown by tier available
+Story 4: Admin dapat handle support
+text
+AS A: Support admin
+I WANT TO: assign ticket, respond, resolve
+SO THAT: user issues settled cepat
+
+Acceptance:
+✅ Ticket assignment works
+✅ Email notification to user
+✅ Resolution time tracked
+9. DATABASE SCHEMA - ADMIN TABLES
+sql
+-- Admin users
+CREATE TABLE admin_users (
+  id UUID PRIMARY KEY,
+  email VARCHAR UNIQUE,
+  role VARCHAR (super_admin, support, analytics, finance),
+  status VARCHAR (active, suspended),
+  created_at TIMESTAMP
+);
+
+-- Support tickets
+CREATE TABLE support_tickets (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  subject VARCHAR,
+  description TEXT,
+  priority VARCHAR (low, medium, high, critical),
+  status VARCHAR (open, in_progress, resolved, closed),
+  assigned_to UUID REFERENCES admin_users(id),
+  created_at TIMESTAMP,
+  resolved_at TIMESTAMP
+);
+
+-- Admin logs
+CREATE TABLE admin_logs (
+  id UUID PRIMARY KEY,
+  admin_id UUID REFERENCES admin_users(id),
+  action VARCHAR,
+  resource_type VARCHAR,
+  resource_id UUID,
+  changes JSONB,
+  created_at TIMESTAMP
+);
+
+-- Feature flags
+CREATE TABLE feature_flags (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR UNIQUE,
+  status BOOLEAN DEFAULT FALSE,
+  rollout_percent INT DEFAULT 0,
+  config JSONB,
+  created_at TIMESTAMP
+);
+10. ADMIN DASHBOARD WIREFRAME
+text
+┌─────────────────────────────────────────┐
+│ UMKM Go Admin Dashboard                  │
+├─────────────┬───────────────────────────┤
+│             │                           │
+│  Sidebar    │   KPI Cards               │
+│  ┌────────┐ │  ┌─────┐ ┌─────┐ ┌─────┐│
+│  │ Users  │ │  │Total│ │MRR  │ │Churn││
+│  │Revenue │ │  │User │ │    │ │Rate ││
+│  │Health  │ │  └─────┘ └─────┘ └─────┘│
+│  │Support │ │                          │
+│  │Logs    │ │  Charts: Revenue Trend   │
+│  │Config  │ │  ┌────────────────────┐ │
+│  └────────┘ │  │                    │ │
+│             │  │  📈                │ │
+│             │  │                    │ │
+│             │  └────────────────────┘ │
+│             │                          │
+│             │  Recent Transactions:    │
+│             │  ┌────────────────────┐ │
+│             │  │ User | Amt | Date │ │
+│             │  │ ...                 │ │
+│             │  └────────────────────┘ │
+└─────────────┴───────────────────────────┘
+11. PRIORITAS IMPLEMENTASI
+MVP Phase (Week 1-2)
+User Side:
+Auth + onboarding
+Catalog + storefront
+MIDTRANS payment
+Admin Side:
+Admin login (basic)
+User list + suspend
+Basic analytics (MRR, users)
+Support tickets (simple)
+Phase 1 (Week 3-4)
+User Side:
+Custom domain
+White-label
+SEO tools
+Admin Side:
+Advanced analytics (churn, LTV)
+Revenue forecasting
+Platform health monitoring
+Feature flags
+Phase 2+ (Month 2+)
+Admin Side:
+Automated reports
+Smart recommendations
+Advanced CRM
+Marketing automation
+12. SUCCESS METRICS
+Product Metrics
+text
+User side:
+- Signup: 100/hari (M1) → 1000/hari (M6)
+- Onboarding completion: > 95%
+- Free-to-Pro conversion: > 5%
+- Churn: < 2%
+
+Admin side:
+- Support response time: < 2 jam
+- User satisfaction: > 4.5/5
+- Platform uptime: > 99.5%
+- Revenue forecast accuracy: > 80%
+Business Metrics
+text
+- MRR: Rp 90jt (Year 1)
+- CAC: < Rp 50k
+- LTV: > Rp 2 juta
+- Payback: < 1 bulan
+13. RISK & MITIGATION
+RiskMitigation
+Data leak antar tenant
+RLS + audit logs
+Admin abuse
+Role-based access + 2FA + logging
+Support overload
+Ticketing system + SLA
+Revenue fraud
+Payment verification + anomaly detection
+14. TIMELINE
+text
+Week 1-2: MVP (user + basic admin)
+Week 3-4: Phase 1 (advanced admin)
+Month 2: Marketing launch
+Month 3-6: Scale to 100k users
+15. APPENDIX - ADMIN API ENDPOINTS
+text
+GET    /api/admin/users (list)
+GET    /api/admin/users/:id (detail)
+PUT    /api/admin/users/:id/suspend
+GET    /api/admin/analytics (KPI)
+GET    /api/admin/analytics/revenue
+GET    /api/admin/analytics/charts
+GET    /api/admin/tickets (list)
+POST   /api/admin/tickets/:id/reply
+PUT    /api/admin/tickets/:id/status
+GET    /api/admin/health (uptime)
+GET    /api/admin/logs (audit trail)
+PUT    /api/admin/feature-flags/:id
+GET    /api/admin/reports/:type
+📄 PRD EXTENDED DENGAN ADMIN DASHBOARD SIAP!
+** Download → Lengkap untuk user + admin** ✅
+Struktur admin dashboard sudah production-ready dengan:
+User management
+Analytics & revenue monitoring
+Support ticketing
+Platform health
+Audit logs
+Feature flags
+Siap implementasi! 🚀

@@ -1,8 +1,8 @@
-# Workspace
+# UMKM Go
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+UMKM Go adalah platform SaaS multi-tenant untuk UMKM Indonesia. Memungkinkan pemilik UMKM membuat website toko profesional dalam 5 menit, serta menyediakan admin dashboard untuk mengelola platform.
 
 ## Stack
 
@@ -10,9 +10,15 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Node.js version**: 24
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
-- **API framework**: Express 5
+- **Frontend**: React + Vite + Tailwind CSS + shadcn/ui (artifacts/umkm-go)
+- **API framework**: Express 5 (artifacts/api-server)
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
+- **Auth**: JWT (jsonwebtoken + bcryptjs)
+- **Charts**: Recharts
+- **Forms**: React Hook Form + Zod
+- **Routing**: Wouter
+- **Animations**: Framer Motion
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
@@ -20,77 +26,145 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ```text
 artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
-├── lib/                    # Shared libraries
+├── artifacts/
+│   ├── api-server/         # Express API server
+│   └── umkm-go/            # React + Vite frontend (serves at /)
+├── lib/
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
 │   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+├── scripts/                # Utility scripts
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+├── tsconfig.json
+└── package.json
 ```
 
-## TypeScript & Composite Projects
+## Key Features
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
+### User Side (UMKM Owner)
+- Landing page with pricing, features, testimonials, FAQ
+- Auth: Register/Login (email + password)
+- 5-step onboarding wizard: nama toko → kategori → WhatsApp → logo → selesai
+- User dashboard: stats cards (visitors, orders, revenue, conversion rate)
+- Catalog management: CRUD produk dengan search
+- Store settings
+- Billing & subscription info
+- Support tickets: buat dan pantau tiket bantuan
+- Public storefront (/store/:slug): hero, product grid, WhatsApp button
 
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+### Admin Side (Platform Manager)
+- Protected admin routes (/admin/*)
+- Global analytics dashboard: KPI cards, signup trend, tier distribution, top stores
+- User management: list, search, filter, suspend/unsuspend
+- Revenue monitoring: trend chart, tier breakdown, transaction history
+- Platform health: uptime, error rate, response time, services status
+- Support tickets: assign, respond, resolve
+- Audit logs: searchable admin action history
+- Feature flags: toggle on/off, rollout percent control
 
-## Root Scripts
+## Demo Accounts
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
-- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
+- **Admin**: admin@umkmgo.id / admin123456 (super_admin role)
+- **Demo UMKM**: demo@umkm.id / demo123456 (has store: Warung Makan Sederhana)
+- **Demo storefront**: /store/warung-sederhana
 
-## Packages
+## Database Schema
 
-### `artifacts/api-server` (`@workspace/api-server`)
+Tables in PostgreSQL:
+- `users` - User accounts (id, name, email, password_hash, role, tier, status)
+- `categories` - 14 kategori bisnis UMKM
+- `stores` - Toko per UMKM (slug, name, category, whatsapp, theme)
+- `products` - Produk per toko (name, price, description, imageUrl)
+- `support_tickets` - Tiket dukungan pengguna
+- `admin_logs` - Audit trail semua aksi admin
+- `feature_flags` - Feature flags platform
 
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
+## API Routes
 
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
+All routes prefixed with `/api`:
 
-### `lib/db` (`@workspace/db`)
+### Auth
+- POST /api/auth/register
+- POST /api/auth/login
+- POST /api/auth/logout
+- GET /api/auth/me
 
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
+### Stores
+- GET /api/stores/my (user's own store)
+- GET /api/stores/:slug (public storefront)
+- POST /api/stores (create store)
+- PUT /api/stores/:slug (update store)
 
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
+### Products
+- GET /api/products (user's products with search/pagination)
+- POST /api/products
+- PUT /api/products/:id
+- DELETE /api/products/:id
 
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
+### Analytics
+- GET /api/analytics/dashboard
 
-### `lib/api-spec` (`@workspace/api-spec`)
+### Admin (requireAdmin middleware)
+- GET /api/admin/stats
+- GET /api/admin/users
+- POST /api/admin/users/:id/suspend
+- POST /api/admin/users/:id/unsuspend
+- GET /api/admin/revenue
+- GET /api/admin/health
+- GET /api/admin/logs
 
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
+### Support Tickets
+- GET /api/tickets
+- POST /api/tickets
+- GET /api/tickets/:id
+- PUT /api/tickets/:id
 
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
+### Feature Flags
+- GET /api/flags
+- POST /api/flags
+- PUT /api/flags/:id
 
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
+## Access Control
 
-### `lib/api-zod` (`@workspace/api-zod`)
+- `requireAuth` middleware: checks JWT Bearer token
+- `requireAdmin` middleware: checks role = admin | super_admin
+- JWT stored in localStorage as 'umkm_token'
+- User info stored in localStorage as 'umkm_user'
 
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
+## Frontend Routes
 
-### `lib/api-client-react` (`@workspace/api-client-react`)
+- `/` - Landing page
+- `/login` - Login
+- `/register` - Register
+- `/onboarding` - 5-step store setup wizard
+- `/dashboard` - User dashboard
+- `/dashboard/catalog` - Product management
+- `/dashboard/settings` - Store settings
+- `/dashboard/billing` - Billing & plan info
+- `/dashboard/support` - Support tickets
+- `/store/:slug` - Public storefront
+- `/admin/dashboard` - Admin global stats
+- `/admin/users` - User management
+- `/admin/revenue` - Revenue monitoring
+- `/admin/health` - Platform health
+- `/admin/tickets` - Support ticket management
+- `/admin/logs` - Audit logs
+- `/admin/flags` - Feature flags
 
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
+## Running Locally
 
-### `scripts` (`@workspace/scripts`)
+```bash
+# API server dev
+pnpm --filter @workspace/api-server run dev
 
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+# Frontend dev
+pnpm --filter @workspace/umkm-go run dev
+
+# Push DB schema
+pnpm --filter @workspace/db run push
+
+# Run codegen after OpenAPI spec changes
+pnpm --filter @workspace/api-spec run codegen
+```

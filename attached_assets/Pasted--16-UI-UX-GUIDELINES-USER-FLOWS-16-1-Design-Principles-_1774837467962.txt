@@ -1,0 +1,33 @@
+## 16. UI/UX GUIDELINES & USER FLOWS
+
+### 16.1 Design Principles
+* **User Side (UMKM):** *Mobile-first, Simple, Forgiving.* UMKM owner mungkin tidak *tech-savvy*. Hindari jargon teknis, gunakan bahasa sehari-hari. Berikan panduan visual yang jelas saat terjadi error.
+* **Storefront (Pembeli):** *Fast, Conversion-optimized, Accessible.* Harus super cepat dimuat di koneksi 3G/4G standar, tombol CTA (Call to Action) mencolok (seperti tombol WhatsApp).
+* **Admin Side:** *Desktop-first, Data-dense, Scannable.* Mengutamakan efisiensi membaca tabel data besar, *shortcut* keyboard untuk aksi massal (*bulk actions*), dan grafik yang mudah dibaca.
+
+### 16.2 Core User Journeys (UX Flows)
+**1. Onboarding Flow (User UMKM):**
+`Landing Page` → `Klik "Mulai Gratis"` → `Register (Google/Email)` → `Input Nama Toko` → `Pilih Kategori` → `Upload Logo` → `Dashboard Utama (Success Modal)`.
+
+**2. Add Product Flow (User UMKM):**
+`Dashboard` → `Menu Katalog` → `Klik "Tambah Produk"` → `Form (Nama, Foto, Harga, Deskripsi)` → `Simpan` → `Toast Message: Produk Berhasil Ditambahkan`.
+
+**3. Purchase Flow (Pembeli di Toko):**
+`Buka Link Toko (/:storeSlug)` → `Pilih Produk` → `Klik "Beli via WhatsApp"` → `Auto-generate format pesan WA` → `Redirect ke App WhatsApp`.
+
+### 16.3 Responsive Design & Breakpoints
+* **Mobile (Ponsel):** `< 768px` (Target utama untuk Storefront & User Dashboard). Elemen navigasi menggunakan *Bottom Navigation Bar* atau *Hamburger Menu*.
+* **Tablet:** `768px - 1024px`.
+* **Desktop:** `> 1024px` (Target utama untuk Admin Dashboard). Menggunakan layout sidebar statis dan tabel data melebar (*full-width*).
+
+### 16.4 UI State Management (Kondisi Layar)
+Setiap halaman harus mempertimbangkan 4 status UI berikut:
+* **Empty State:** Apa yang dilihat user jika belum ada data? (Contoh: Belum ada produk → Tampilkan ilustrasi toko kosong dan tombol besar "Tambah Produk Pertama Anda").
+* **Loading State:** Gunakan *Skeleton loading* (kerangka bayangan) untuk memuat halaman produk/dashboard, bukan sekadar *spinner* muter-muter.
+* **Error State:** Pesan error harus *actionable*. (Contoh: "Koneksi terputus. [Coba Lagi]" alih-alih "Error 500").
+* **Success State:** Gunakan *Toast notification* ringan di pojok layar untuk aksi sukses (menyimpan produk, mengubah pengaturan) agar tidak mengganggu *flow* pengguna.
+
+### 16.5 Accessibility (a11y) Standards
+* **Color Contrast:** Pastikan kontras teks dan latar belakang memenuhi standar WCAG AA (rasio minimal 4.5:1), terutama pada harga dan tombol aksi.
+* **Tap Targets:** Area sentuh untuk tombol dan *link* di mobile minimal berukuran `44x44 pixel` agar mudah ditekan jari.
+* **Focus States:** Field form yang sedang diisi harus memiliki garis luar (*border*) yang jelas agar pengguna tahu posisi ketikan mereka.
