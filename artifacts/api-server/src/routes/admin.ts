@@ -211,13 +211,24 @@ router.get("/admin/logs", requireAdmin, async (req, res) => {
     const page = parseInt(String(req.query.page || "1"));
     const limit = parseInt(String(req.query.limit || "50"));
     const offset = (page - 1) * limit;
+    const actorFilter = req.query.actor as string | undefined;
+    const actionFilter = req.query.action as string | undefined;
 
-    const logs = await db
+    const conditions = [];
+    if (actorFilter) conditions.push(ilike(adminLogsTable.actor, `%${actorFilter}%`));
+    if (actionFilter) conditions.push(eq(adminLogsTable.action, actionFilter));
+
+    const logsQuery = db
       .select()
       .from(adminLogsTable)
       .orderBy(desc(adminLogsTable.createdAt))
       .limit(limit)
-      .offset(offset);
+      .offset(offset)
+      .$dynamic();
+
+    const logs = conditions.length > 0
+      ? await logsQuery.where(and(...conditions))
+      : await logsQuery;
 
     const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(adminLogsTable);
 
