@@ -8,6 +8,9 @@ import analyticsRouter from "./analytics.js";
 import adminRouter from "./admin.js";
 import ticketsRouter from "./tickets.js";
 import flagsRouter from "./flags.js";
+import ordersRouter from "./orders.js";
+import customersRouter from "./customers.js";
+import domainsRouter from "./domains.js";
 
 const router: IRouter = Router();
 
@@ -20,5 +23,8 @@ router.use(analyticsRouter);
 router.use(adminRouter);
 router.use(ticketsRouter);
 router.use(flagsRouter);
+router.use(ordersRouter);
+router.use(customersRouter);
+router.use(domainsRouter);
 
 export default router;

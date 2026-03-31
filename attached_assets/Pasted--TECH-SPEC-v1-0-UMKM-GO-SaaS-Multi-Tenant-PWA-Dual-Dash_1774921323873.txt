@@ -1,0 +1,986 @@
+# 🏗️ TECH SPEC v1.0 — UMKM GO
+## SaaS Multi-Tenant + PWA + Dual Dashboard
+
+**Version:** 1.0  
+**Derived From:** PRD FINAL v9.0  
+**Status:** Ready for Engineering  
+**Architecture:** Next.js + Vercel + Supabase  
+**Last Updated:** 30 Maret 2026  
+
+---
+
+# 1. PURPOSE
+
+Dokumen ini menjabarkan detail teknis implementasi UMKM Go berdasarkan PRD v9.0.  
+Tujuannya adalah agar tim engineering, AI coder, dan QA memiliki satu acuan teknis yang konsisten untuk membangun sistem.
+
+Dokumen ini mencakup:
+- arsitektur sistem,
+- routing,
+- tenant isolation,
+- auth & role model,
+- dashboard UMKM,
+- dashboard super admin,
+- billing & subscription,
+- domain & DNS,
+- PWA,
+- observability,
+- background jobs,
+- API design,
+- deployment strategy.
+
+---
+
+# 2. SYSTEM OVERVIEW
+
+UMKM Go adalah platform SaaS multi-tenant yang terdiri dari:
+1. Marketing website / landing pages
+2. Auth & onboarding
+3. Dashboard UMKM
+4. Dashboard super admin
+5. Public storefront tenant
+6. Billing & add-on domain management
+7. PWA layer
+8. CMS layer untuk halaman marketing
+9. Background job & webhook processing layer
+
+---
+
+# 3. HIGH-LEVEL ARCHITECTURE
+
+## 3.1 Main Stack
+- **Frontend:** Next.js App Router
+- **Hosting:** Vercel
+- **Middleware / Edge:** Vercel Middleware
+- **Backend platform:** Supabase
+- **Database:** PostgreSQL
+- **Auth:** Supabase Auth
+- **Storage:** Supabase Storage
+- **Payment:** Midtrans BYOK
+- **Shipping API:** RajaOngkir / Biteship
+- **Notifications:** Email provider + WhatsApp provider
+- **Monitoring:** Vercel + structured app logging + DB logs
+- **PWA layer:** manifest + service worker + cache strategy
+
+## 3.2 Runtime Surfaces
+- Public marketing pages
+- Auth pages
+- Tenant dashboard
+- Admin dashboard
+- Tenant storefront
+- API endpoints
+- Background jobs
+- Webhooks
+
+## 3.3 Architecture Pattern
+- Frontend rendered via Next.js
+- Data access via server actions / route handlers / backend endpoints
+- Multi-tenant isolation via auth + tenant context + RLS + tenant-scoped repository pattern
+- Background jobs for non-blocking operations
+- CMS-driven marketing content
+- Feature gating driven by subscription entitlements
+
+---
+
+# 4. ROUTING ARCHITECTURE
+
+## 4.1 Public Routes
+- `/`
+- `/pricing`
+- `/features`
+- `/templates`
+- `/faq`
+- `/blog`
+- `/contact`
+- `/terms`
+- `/privacy`
+
+## 4.2 Auth Routes
+- `/login`
+- `/register`
+- `/verify-email`
+- `/forgot-password`
+- `/onboarding`
+
+## 4.3 UMKM Dashboard Routes
+- `/dashboard`
+- `/dashboard/products`
+- `/dashboard/orders`
+- `/dashboard/customers`
+- `/dashboard/templates`
+- `/dashboard/domains`
+- `/dashboard/billing`
+- `/dashboard/payments`
+- `/dashboard/shipping`
+- `/dashboard/settings`
+- `/dashboard/seo`
+
+## 4.4 Admin Routes
+- `/admin`
+- `/admin/tenants`
+- `/admin/plans`
+- `/admin/billing`
+- `/admin/domains`
+- `/admin/templates`
+- `/admin/tickets`
+- `/admin/cms`
+- `/admin/blog`
+- `/admin/logs`
+- `/admin/health`
+- `/admin/admin-users`
+
+## 4.5 Storefront Routes
+- `/:storeSlug`
+- `/:storeSlug/product/:productSlug` (optional phase)
+- `customdomain.com`
+
+## 4.6 Route Ownership Rules
+- Public routes: no auth required
+- Tenant routes: authenticated tenant user required
+- Admin routes: authenticated admin with RBAC required
+- Storefront routes: public, tenant-resolved at runtime
+
+---
+
+# 5. TENANT RESOLUTION STRATEGY
+
+## 5.1 Tenant Context Sources
+Tenant context dapat berasal dari:
+- authenticated session pada dashboard tenant
+- slug pada public storefront
+- verified custom domain mapping
+- admin impersonation context yang tervalidasi
+
+## 5.2 Resolution Order for Public Storefront
+1. Check host header
+2. Jika host = custom domain tenant → resolve tenant by domain
+3. Jika host = main platform domain → parse `/:storeSlug`
+4. Load tenant context
+5. Validate tenant storefront status
+6. Render storefront
+
+## 5.3 Resolution Order for Dashboard
+1. Read authenticated session
+2. Resolve owner / member -> tenant membership
+3. Load active tenant context
+4. Load entitlements
+5. Enforce feature access
+
+## 5.4 Technical Rule
+Tenant ID **tidak boleh** diambil mentah dari query param atau client payload sebagai sumber kebenaran.  
+Semua query data harus memakai tenant context hasil validasi server-side.
+
+---
+
+# 6. AUTHENTICATION & AUTHORIZATION
+
+## 6.1 Tenant Auth
+- Email/password via Supabase Auth
+- Google OAuth
+- Email verification
+- Password reset
+- Secure session handling
+
+## 6.2 Admin Auth
+- Separate admin login
+- Admin user stored in `admin_users`
+- 2FA mandatory
+- Session timeout 30 menit
+- Optional device/session audit
+
+## 6.3 Tenant Roles
+- owner
+- operator
+- viewer
+
+## 6.4 Admin Roles
+- super_admin
+- support
+- finance
+- content_admin
+
+## 6.5 Authorization Strategy
+Authorization dilakukan di 3 level:
+1. UI gating
+2. API route authorization
+3. Database / repository tenant-scoped enforcement
+
+## 6.6 Impersonation Rules
+- Hanya role tertentu yang dapat impersonation
+- Wajib mengisi reason
+- Session impersonation punya marker khusus
+- Semua aksi selama impersonation tetap log actor asli + target tenant
+- Tombol exit impersonation wajib selalu terlihat
+
+---
+
+# 7. APPLICATION MODULES
+
+## 7.1 Marketing Website Module
+Fungsi:
+- acquisition
+- conversion
+- pricing information
+- template discovery
+- SEO content
+- FAQ
+- legal pages
+
+Dependencies:
+- CMS content
+- plan pricing config
+- template catalog
+- analytics tracking
+
+## 7.2 Auth & Onboarding Module
+Fungsi:
+- registration
+- login
+- onboarding wizard
+- slug creation
+- initial tenant creation
+- first template selection
+
+Dependencies:
+- auth
+- tenants
+- templates
+- categories
+- analytics events
+
+## 7.3 Tenant Dashboard Module
+Fungsi:
+- store operations
+- products
+- orders
+- customers
+- domain
+- billing
+- integrations
+- settings
+
+Dependencies:
+- tenant context
+- entitlements
+- products/orders/customers/domains/subscriptions
+
+## 7.4 Admin Dashboard Module
+Fungsi:
+- tenant management
+- pricing & plans
+- revenue
+- domains
+- templates
+- CMS
+- support
+- audit
+
+Dependencies:
+- admin auth
+- analytics tables/views
+- admin logs
+- ticketing
+- domain records
+
+## 7.5 Storefront Module
+Fungsi:
+- public tenant page
+- buyer browsing
+- WA checkout / web checkout
+- SEO-friendly public pages
+- mobile-first presentation
+
+Dependencies:
+- tenant resolution
+- products
+- template renderer
+- domain mapping
+- feature entitlements
+
+---
+
+# 8. FRONTEND ARCHITECTURE
+
+## 8.1 App Structure
+Recommended structure:
+- `app/(marketing)/...`
+- `app/(auth)/...`
+- `app/(tenant)/dashboard/...`
+- `app/(admin)/admin/...`
+- `app/[storeSlug]/...`
+- `components/...`
+- `lib/...`
+- `modules/...`
+- `server/...`
+
+## 8.2 Rendering Strategy
+- Marketing pages: SSR / static where possible
+- Storefront: SSR with caching
+- Dashboard tenant: auth-protected app pages
+- Admin dashboard: auth-protected app pages
+- CMS pages: ISR or cached SSR
+
+## 8.3 UI Component Strategy
+Shared component groups:
+- layout
+- forms
+- cards
+- tables
+- mobile list views
+- toasts
+- dialogs
+- skeleton loaders
+- analytics charts
+- status badges
+
+## 8.4 Mobile Strategy
+- Tenant dashboard and storefront built mobile-first
+- Tables degrade to cards/lists on small screens
+- Primary actions sticky / visible
+- Bottom-safe action placement for common tasks
+
+---
+
+# 9. BACKEND ARCHITECTURE
+
+## 9.1 API Layers
+- Route handlers / server endpoints
+- Service layer
+- Repository layer
+- Policy / authorization layer
+- Event logging layer
+
+## 9.2 Repository Pattern
+All tenant-owned data must go through repository helpers that:
+- require tenant context
+- auto-apply tenant filter
+- validate ownership before update/delete
+- reject cross-tenant resource access
+
+## 9.3 Service Layer Responsibilities
+- business logic
+- validation
+- orchestration between DB and external APIs
+- idempotency
+- audit logging
+- entitlement enforcement
+
+## 9.4 Example Services
+- AuthService
+- TenantProvisioningService
+- ProductService
+- OrderService
+- SubscriptionService
+- DomainService
+- TemplateService
+- CmsService
+- AdminSupportService
+- AuditLogService
+
+---
+
+# 10. DATABASE ACCESS STRATEGY
+
+## 10.1 Isolation Model
+- Shared PostgreSQL database
+- Shared tables with `tenant_id`
+- RLS enabled on tenant-owned tables
+- Optional app.current_tenant context for deeper enforcement
+- Admin tables separated logically
+
+## 10.2 Required Rules
+- all tenant-owned records must have `tenant_id`
+- no tenant query without tenant filter
+- no direct update/delete without ownership validation
+- no sequential public identifiers exposed where sensitive
+
+## 10.3 Query Patterns
+Safe pattern:
+- `WHERE tenant_id = currentTenantId AND id = resourceId`
+
+Unsafe pattern:
+- `WHERE id = resourceId` only
+
+## 10.4 Caching Rules
+- all cache keys prefixed by tenant identifier
+- cache payload can include tenant ID for validation
+- cache invalidation must support tenant-scoped purge
+
+---
+
+# 11. STORAGE ARCHITECTURE
+
+## 11.1 Storage Types
+- logos
+- banners
+- product images
+- label PDFs
+- template previews
+- CMS assets
+
+## 11.2 Path Rules
+Every file path must be tenant-scoped or module-scoped.
+
+Examples:
+- `tenants/{tenantId}/logo/...`
+- `tenants/{tenantId}/products/...`
+- `tenants/{tenantId}/labels/...`
+- `cms/landing/...`
+- `templates/previews/...`
+
+## 11.3 Access Rules
+- tenant assets served only with ownership checks
+- signed URLs for sensitive/private assets
+- public storefront assets can be public where appropriate
+- admin actions on assets must be logged
+
+---
+
+# 12. SUBSCRIPTION & ENTITLEMENT ARCHITECTURE
+
+## 12.1 Core Concepts
+- plan
+- feature matrix
+- tenant subscription
+- add-on
+- entitlement resolver
+- billing lifecycle state
+
+## 12.2 Entitlement Resolver
+At runtime, the app resolves:
+- active plan
+- active add-ons
+- usage quota
+- domain entitlement
+- template entitlement
+- CRM/export/pixel access
+
+Output:
+```ts
+type Entitlements = {
+  maxProducts: number
+  maxDomains: number
+  crmEnabled: boolean
+  byokEnabled: boolean
+  shippingEnabled: boolean
+  premiumTemplatesEnabled: boolean
+  exportEnabled: boolean
+  watermarkRemoved: boolean
+  domainManagementEnabled: boolean
+}
+```
+
+## 12.3 Billing Lifecycle Engine
+States:
+- trialing
+- active
+- grace_period
+- past_due
+- suspended
+- expired
+- cancelled
+
+Rules:
+- reminder schedule H-7 / H-3 / H-1 / H+1
+- grace period 3 hari
+- post-expiry downgrade behavior
+- data retention window
+- domain add-on can be independently expired
+
+## 12.4 Feature Gate Strategy
+Feature access checked at:
+- route level
+- API level
+- UI visibility level
+- runtime action level
+
+---
+
+# 13. DOMAIN & DNS ARCHITECTURE
+
+## 13.1 Domain Flow
+1. Tenant requests domain connection
+2. System creates domain record
+3. DNS instructions generated
+4. Tenant updates DNS externally
+5. Verification job runs
+6. Status becomes active or failed
+7. Middleware routes domain to tenant storefront
+
+## 13.2 Domain Status Machine
+- pending_input
+- pending_dns
+- verifying
+- active
+- failed
+- suspended
+- expired
+
+## 13.3 Domain Add-on Logic
+- plan may or may not include domain entitlement
+- tenant can buy domain management add-on
+- add-on status affects domain feature access
+- domain history remains visible even if add-on expires
+
+## 13.4 DNS Records
+Store:
+- record type
+- host
+- value
+- ttl
+- verification state
+
+## 13.5 Admin Domain Operations
+- view all domains
+- filter by state
+- cost visibility
+- manual recheck
+- force status override (restricted)
+- incident notes
+
+---
+
+# 14. TEMPLATE ENGINE ARCHITECTURE
+
+## 14.1 Template Model
+A template defines storefront presentation presets:
+- hero style
+- product layout
+- CTA emphasis
+- typography preset
+- color preset
+- optional blocks (FAQ/testimonial/contact)
+
+## 14.2 Template Rendering
+Template renderer uses:
+- tenant content
+- template config
+- category defaults
+- theme variables
+
+## 14.3 Category Mapping
+Each category can have:
+- 1 default template
+- 1+ optional alternative templates
+- premium/free flags
+
+## 14.4 MVP Template Set
+- universal
+- food & beverage
+- product/retail
+- services
+- rental/booking
+
+---
+
+# 15. ORDER & CHECKOUT ARCHITECTURE
+
+## 15.1 Checkout Modes
+### Free
+- WhatsApp checkout
+- formatted message generation
+- order may be recorded as lightweight lead/order
+
+### Pro
+- web checkout
+- address entry
+- shipping calculation
+- payment flow
+- order + payment record
+
+## 15.2 Order State Machine
+- pending
+- awaiting_payment
+- paid
+- processing
+- shipped
+- completed
+- cancelled
+- expired
+
+## 15.3 Payment State Machine
+- pending
+- paid
+- failed
+- refunded
+- expired
+
+## 15.4 Label PDF Generation
+Flow:
+1. Tenant opens order
+2. Trigger label generation
+3. Job creates PDF
+4. File stored in tenant storage
+5. Tenant gets download link
+6. Success/failure logged
+
+---
+
+# 16. EXTERNAL INTEGRATIONS
+
+## 16.1 Midtrans BYOK
+Store per tenant:
+- encrypted server key
+- connection status
+- last verification timestamp
+
+Rules:
+- accessible only to entitled plans
+- never exposed to client
+- connectivity check from server only
+- webhook verified server-side
+
+## 16.2 Shipping Provider
+Store per tenant:
+- origin city
+- provider enablement
+- courier preferences
+- connection metadata
+
+## 16.3 WhatsApp / Email Notification
+Notification system should support:
+- queueing
+- retries
+- failure tracking
+- event-based templating
+
+---
+
+# 17. PWA TECHNICAL DESIGN
+
+## 17.1 PWA Goals
+- installable app-like experience
+- faster repeat visits
+- dashboard shell loads fast
+- offline fallback
+- resilient mobile UX
+
+## 17.2 Required Files
+- `/manifest.webmanifest`
+- service worker script
+- app icons 192x192 and 512x512
+- offline fallback page
+
+## 17.3 Manifest Fields
+- `name`
+- `short_name`
+- `start_url`
+- `display: standalone`
+- `theme_color`
+- `background_color`
+- `icons`
+
+## 17.4 Service Worker Responsibilities
+- precache essential shell assets
+- cache static assets
+- cache offline page
+- use safe cache versioning
+- handle fetch strategies by route type
+
+## 17.5 Cache Strategy by Surface
+- marketing assets: stale-while-revalidate
+- storefront assets: stale-while-revalidate / cache-first for images
+- dashboard shell: network-first with cached shell fallback
+- admin shell: network-first, minimal cache
+- offline page: precached
+
+## 17.6 Offline UX
+- custom offline page
+- reconnect notice
+- fallback for unavailable network actions
+- keep shell usable where possible
+
+---
+
+# 18. MOBILE UX ENGINEERING RULES
+
+## 18.1 UMKM Dashboard
+- no essential feature hidden behind desktop-only table
+- list/card fallback mandatory
+- sticky save button for long forms
+- floating quick action optional
+- status badges readable on small screens
+
+## 18.2 Storefront
+- responsive product grid
+- lightweight images
+- prominent CTA
+- mobile sticky contact / checkout if needed
+
+## 18.3 Admin Dashboard
+- desktop-first
+- still usable on tablet
+- data-heavy views prioritize filters and export
+- large tables may stay desktop-optimized
+
+---
+
+# 19. BACKGROUND JOBS
+
+## 19.1 Job Types
+- send notification
+- retry failed notification
+- generate label PDF
+- verify domain
+- retry domain verification
+- sync payment status
+- process webhooks
+- expiry reminder
+- grace-period checker
+- analytics aggregation
+
+## 19.2 Job Requirements
+- idempotent where required
+- retry policy
+- dead-letter/error visibility
+- structured logging
+- observability per job type
+
+## 19.3 Scheduling
+Scheduled jobs:
+- daily billing reminder
+- hourly domain verification retry
+- recurring expiry checker
+- analytics rollup
+- stale ticket SLA reminder
+
+---
+
+# 20. WEBHOOK PROCESSING
+
+## 20.1 Webhooks
+- Midtrans payment updates
+- domain verification callback / status polling result
+- WhatsApp delivery status
+
+## 20.2 Webhook Rules
+- verify signature/provider authenticity
+- write raw event to `webhook_events`
+- deduplicate via `provider + external_event_id`
+- process idempotently
+- log failures with retry
+
+## 20.3 Failure Handling
+- status = pending / processed / failed
+- retry failed events where safe
+- admin visibility for failed webhook volume
+
+---
+
+# 21. OBSERVABILITY & MONITORING
+
+## 21.1 Logging
+All critical logs should include:
+- tenant_id if applicable
+- user_id
+- route/action
+- status
+- latency
+- error code
+- request id
+
+## 21.2 Metrics
+Track:
+- page load performance
+- API latency
+- error rates
+- webhook success/failure
+- notification success/failure
+- domain verification success/failure
+- billing conversion
+- install prompt engagement
+
+## 21.3 Alerts
+Alert on:
+- high error rate
+- payment webhook failures
+- cross-tenant access attempt
+- domain verification spike failures
+- queue backlog growth
+- admin auth anomalies
+
+---
+
+# 22. SECURITY REQUIREMENTS
+
+## 22.1 Mandatory Controls
+- tenant context from validated session
+- RLS for tenant-owned tables
+- tenant-aware query enforcement
+- tenant-scoped cache keys
+- tenant-scoped storage paths
+- rate limiting per tenant and IP
+- append-only audit logs for admin actions
+- 2FA for admin
+- encrypted secrets
+
+## 22.2 Sensitive Actions
+Sensitive actions requiring audit:
+- suspend tenant
+- unsuspend tenant
+- impersonation start/end
+- plan change
+- domain override
+- refund/manual billing action
+- delete resource
+- reset password trigger
+
+## 22.3 Abuse Prevention
+- hCaptcha for risky flows
+- login rate limiting
+- checkout rate limiting
+- anti-spam thresholds
+- suspicious activity flagging
+
+---
+
+# 23. DEPLOYMENT ARCHITECTURE
+
+## 23.1 Environments
+- local
+- staging
+- production
+
+## 23.2 Environment Variables
+- Supabase URL
+- Supabase anon key
+- Supabase service role key
+- Midtrans config
+- shipping provider config
+- email provider config
+- WhatsApp provider config
+- app domain
+- admin domain
+- Sentry/monitoring config
+
+## 23.3 Deployment Flow
+1. push to repository
+2. CI checks
+3. build preview
+4. QA validate
+5. deploy to production
+6. run DB migrations
+7. monitor health and logs
+
+## 23.4 Migration Discipline
+- forward-only migrations
+- seed business categories
+- seed default templates
+- seed default plans
+- version migration history
+
+---
+
+# 24. QA TESTING STRATEGY
+
+## 24.1 Must-Test Areas
+- onboarding
+- slug uniqueness
+- plan feature gating
+- product CRUD
+- order lifecycle
+- payment webhook
+- domain verification
+- impersonation
+- RLS isolation
+- PWA installability
+- offline fallback
+- mobile layout
+
+## 24.2 Security Tests
+- cross-tenant access attempt
+- IDOR tests
+- unauthorized domain access
+- cache poisoning edge cases
+- admin privilege misuse
+- webhook replay/idempotency
+
+## 24.3 Device Coverage
+- low-end Android mobile
+- common mobile browsers
+- tablet
+- desktop Chrome
+- desktop Safari/Edge
+
+---
+
+# 25. IMPLEMENTATION PRIORITY
+
+## Phase 1
+- marketing pages
+- auth
+- onboarding
+- tenant dashboard shell
+- product CRUD
+- storefront basic
+- template selection
+
+## Phase 2
+- order management
+- WA checkout
+- customer CRM
+- mobile optimization
+- label PDF
+
+## Phase 3
+- subscription engine
+- feature matrix
+- BYOK
+- shipping integration
+- domain & DNS
+
+## Phase 4
+- admin dashboard
+- CMS
+- template management
+- tickets
+- audit logs
+- impersonation
+- analytics
+
+## Phase 5
+- PWA optimization
+- cache strategy
+- offline fallback
+- install flow
+- performance refinement
+
+---
+
+# 26. ENGINEERING DECISIONS
+
+## 26.1 Recommended Defaults
+- shared DB + RLS for MVP
+- one tenant per owner for MVP
+- one active subscription per tenant
+- one primary custom domain
+- mobile-first for tenant
+- desktop-first for admin
+
+## 26.2 Intentional Simplifications
+- no full offline transactional support in MVP
+- no multi-warehouse
+- no native mobile app
+- no advanced automation engine
+- no multi-tenant marketplace aggregator in MVP
+
+---
+
+# 27. OPEN TECH QUESTIONS
+
+- Apakah operator role aktif sejak MVP atau phase berikutnya?
+- Apakah order dari WA checkout disimpan sebagai order final atau lead + order hybrid?
+- Apakah domain dibeli di luar platform saja, atau platform ikut menjual domain registrar add-on?
+- Apakah analytics near-real-time diperlukan sejak MVP?
+- Apakah admin impersonation bersifat read-only untuk support role?
+
+---
+
+# 28. DELIVERABLES AFTER THIS DOC
+
+Dokumen lanjutan yang harus dibuat:
+1. SQL Full Production Schema
+2. API Contract Detail
+3. Task Breakdown per Sprint
+4. Seed data categories + templates + plans
+5. QA test case list

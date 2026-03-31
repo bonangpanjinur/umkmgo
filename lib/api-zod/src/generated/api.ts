@@ -648,3 +648,320 @@ export const UpdateFeatureFlagResponse = zod.object({
   description: zod.string().optional(),
   createdAt: zod.coerce.date(),
 });
+
+/**
+ * @summary List orders for current store
+ */
+export const ListOrdersQueryParams = zod.object({
+  page: zod.coerce.number().optional(),
+  limit: zod.coerce.number().optional(),
+  status: zod
+    .enum(["pending", "processing", "shipped", "completed", "cancelled"])
+    .optional(),
+});
+
+export const ListOrdersResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.string(),
+      storeId: zod.string(),
+      buyerName: zod.string(),
+      buyerPhone: zod.string(),
+      buyerAddress: zod.string().optional(),
+      items: zod.array(
+        zod.object({
+          productId: zod.string().optional(),
+          name: zod.string(),
+          price: zod.number(),
+          quantity: zod.number(),
+        }),
+      ),
+      totalAmount: zod.number(),
+      status: zod.enum([
+        "pending",
+        "processing",
+        "shipped",
+        "completed",
+        "cancelled",
+      ]),
+      paymentStatus: zod.enum(["pending", "paid", "failed", "refunded"]),
+      notes: zod.string().optional(),
+      source: zod.string(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
+});
+
+/**
+ * @summary Create a new order
+ */
+export const CreateOrderBody = zod.object({
+  buyerName: zod.string(),
+  buyerPhone: zod.string(),
+  buyerAddress: zod.string().optional(),
+  items: zod.array(
+    zod.object({
+      productId: zod.string().optional(),
+      name: zod.string(),
+      price: zod.number(),
+      quantity: zod.number(),
+    }),
+  ),
+  totalAmount: zod.number(),
+  notes: zod.string().optional(),
+  source: zod.enum(["whatsapp", "manual", "web"]).optional(),
+});
+
+/**
+ * @summary Get single order
+ */
+export const GetOrderParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetOrderResponse = zod.object({
+  id: zod.string(),
+  storeId: zod.string(),
+  buyerName: zod.string(),
+  buyerPhone: zod.string(),
+  buyerAddress: zod.string().optional(),
+  items: zod.array(
+    zod.object({
+      productId: zod.string().optional(),
+      name: zod.string(),
+      price: zod.number(),
+      quantity: zod.number(),
+    }),
+  ),
+  totalAmount: zod.number(),
+  status: zod.enum([
+    "pending",
+    "processing",
+    "shipped",
+    "completed",
+    "cancelled",
+  ]),
+  paymentStatus: zod.enum(["pending", "paid", "failed", "refunded"]),
+  notes: zod.string().optional(),
+  source: zod.string(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update order status
+ */
+export const UpdateOrderParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateOrderBody = zod.object({
+  status: zod
+    .enum(["pending", "processing", "shipped", "completed", "cancelled"])
+    .optional(),
+  paymentStatus: zod.enum(["pending", "paid", "failed", "refunded"]).optional(),
+  notes: zod.string().optional(),
+});
+
+export const UpdateOrderResponse = zod.object({
+  id: zod.string(),
+  storeId: zod.string(),
+  buyerName: zod.string(),
+  buyerPhone: zod.string(),
+  buyerAddress: zod.string().optional(),
+  items: zod.array(
+    zod.object({
+      productId: zod.string().optional(),
+      name: zod.string(),
+      price: zod.number(),
+      quantity: zod.number(),
+    }),
+  ),
+  totalAmount: zod.number(),
+  status: zod.enum([
+    "pending",
+    "processing",
+    "shipped",
+    "completed",
+    "cancelled",
+  ]),
+  paymentStatus: zod.enum(["pending", "paid", "failed", "refunded"]),
+  notes: zod.string().optional(),
+  source: zod.string(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List customers for current store
+ */
+export const ListCustomersQueryParams = zod.object({
+  page: zod.coerce.number().optional(),
+  limit: zod.coerce.number().optional(),
+  search: zod.coerce.string().optional(),
+});
+
+export const ListCustomersResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.string(),
+      storeId: zod.string(),
+      name: zod.string(),
+      phone: zod.string(),
+      email: zod.string().optional(),
+      address: zod.string().optional(),
+      orderCount: zod.number(),
+      totalSpent: zod.number(),
+      lastOrderAt: zod.coerce.date().optional(),
+      notes: zod.string().optional(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
+});
+
+/**
+ * @summary Create a customer manually
+ */
+export const CreateCustomerBody = zod.object({
+  name: zod.string(),
+  phone: zod.string(),
+  email: zod.string().optional(),
+  address: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Update customer
+ */
+export const UpdateCustomerParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateCustomerBody = zod.object({
+  name: zod.string(),
+  phone: zod.string(),
+  email: zod.string().optional(),
+  address: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+export const UpdateCustomerResponse = zod.object({
+  id: zod.string(),
+  storeId: zod.string(),
+  name: zod.string(),
+  phone: zod.string(),
+  email: zod.string().optional(),
+  address: zod.string().optional(),
+  orderCount: zod.number(),
+  totalSpent: zod.number(),
+  lastOrderAt: zod.coerce.date().optional(),
+  notes: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete customer
+ */
+export const DeleteCustomerParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteCustomerResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary List domains for current store
+ */
+export const ListDomainsResponseItem = zod.object({
+  id: zod.string(),
+  storeId: zod.string(),
+  userId: zod.string(),
+  domain: zod.string(),
+  status: zod.enum([
+    "pending_dns",
+    "verifying",
+    "active",
+    "failed",
+    "suspended",
+  ]),
+  dnsTarget: zod.string().optional(),
+  verificationToken: zod.string().optional(),
+  lastCheckedAt: zod.coerce.date().optional(),
+  createdAt: zod.coerce.date(),
+});
+export const ListDomainsResponse = zod.array(ListDomainsResponseItem);
+
+/**
+ * @summary Add custom domain
+ */
+export const CreateDomainBody = zod.object({
+  domain: zod.string(),
+});
+
+/**
+ * @summary Trigger domain verification check
+ */
+export const VerifyDomainParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const VerifyDomainResponse = zod.object({
+  id: zod.string(),
+  storeId: zod.string(),
+  userId: zod.string(),
+  domain: zod.string(),
+  status: zod.enum([
+    "pending_dns",
+    "verifying",
+    "active",
+    "failed",
+    "suspended",
+  ]),
+  dnsTarget: zod.string().optional(),
+  verificationToken: zod.string().optional(),
+  lastCheckedAt: zod.coerce.date().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove custom domain
+ */
+export const DeleteDomainParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteDomainResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Admin list all domains
+ */
+export const ListAdminDomainsResponseItem = zod.object({
+  id: zod.string(),
+  storeId: zod.string(),
+  userId: zod.string(),
+  domain: zod.string(),
+  status: zod.enum([
+    "pending_dns",
+    "verifying",
+    "active",
+    "failed",
+    "suspended",
+  ]),
+  dnsTarget: zod.string().optional(),
+  verificationToken: zod.string().optional(),
+  lastCheckedAt: zod.coerce.date().optional(),
+  createdAt: zod.coerce.date(),
+});
+export const ListAdminDomainsResponse = zod.array(ListAdminDomainsResponseItem);

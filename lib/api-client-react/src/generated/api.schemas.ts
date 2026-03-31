@@ -468,6 +468,157 @@ export interface UpdateFeatureFlagRequest {
   description?: string;
 }
 
+export interface OrderItem {
+  productId?: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
+
+export const OrderStatus = {
+  pending: "pending",
+  processing: "processing",
+  shipped: "shipped",
+  completed: "completed",
+  cancelled: "cancelled",
+} as const;
+
+export type OrderPaymentStatus =
+  (typeof OrderPaymentStatus)[keyof typeof OrderPaymentStatus];
+
+export const OrderPaymentStatus = {
+  pending: "pending",
+  paid: "paid",
+  failed: "failed",
+  refunded: "refunded",
+} as const;
+
+export interface Order {
+  id: string;
+  storeId: string;
+  buyerName: string;
+  buyerPhone: string;
+  buyerAddress?: string;
+  items: OrderItem[];
+  totalAmount: number;
+  status: OrderStatus;
+  paymentStatus: OrderPaymentStatus;
+  notes?: string;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateOrderRequestSource =
+  (typeof CreateOrderRequestSource)[keyof typeof CreateOrderRequestSource];
+
+export const CreateOrderRequestSource = {
+  whatsapp: "whatsapp",
+  manual: "manual",
+  web: "web",
+} as const;
+
+export interface CreateOrderRequest {
+  buyerName: string;
+  buyerPhone: string;
+  buyerAddress?: string;
+  items: OrderItem[];
+  totalAmount: number;
+  notes?: string;
+  source?: CreateOrderRequestSource;
+}
+
+export type UpdateOrderRequestStatus =
+  (typeof UpdateOrderRequestStatus)[keyof typeof UpdateOrderRequestStatus];
+
+export const UpdateOrderRequestStatus = {
+  pending: "pending",
+  processing: "processing",
+  shipped: "shipped",
+  completed: "completed",
+  cancelled: "cancelled",
+} as const;
+
+export type UpdateOrderRequestPaymentStatus =
+  (typeof UpdateOrderRequestPaymentStatus)[keyof typeof UpdateOrderRequestPaymentStatus];
+
+export const UpdateOrderRequestPaymentStatus = {
+  pending: "pending",
+  paid: "paid",
+  failed: "failed",
+  refunded: "refunded",
+} as const;
+
+export interface UpdateOrderRequest {
+  status?: UpdateOrderRequestStatus;
+  paymentStatus?: UpdateOrderRequestPaymentStatus;
+  notes?: string;
+}
+
+export interface OrderListResponse {
+  data: Order[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface Customer {
+  id: string;
+  storeId: string;
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  orderCount: number;
+  totalSpent: number;
+  lastOrderAt?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface CreateCustomerRequest {
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+}
+
+export interface CustomerListResponse {
+  data: Customer[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export type DomainStatus = (typeof DomainStatus)[keyof typeof DomainStatus];
+
+export const DomainStatus = {
+  pending_dns: "pending_dns",
+  verifying: "verifying",
+  active: "active",
+  failed: "failed",
+  suspended: "suspended",
+} as const;
+
+export interface Domain {
+  id: string;
+  storeId: string;
+  userId: string;
+  domain: string;
+  status: DomainStatus;
+  dnsTarget?: string;
+  verificationToken?: string;
+  lastCheckedAt?: string;
+  createdAt: string;
+}
+
+export interface CreateDomainRequest {
+  domain: string;
+}
+
 export type ListStoresParams = {
   page?: number;
   limit?: number;
@@ -551,3 +702,26 @@ export const ListTicketsPriority = {
   high: "high",
   critical: "critical",
 } as const;
+
+export type ListOrdersParams = {
+  page?: number;
+  limit?: number;
+  status?: ListOrdersStatus;
+};
+
+export type ListOrdersStatus =
+  (typeof ListOrdersStatus)[keyof typeof ListOrdersStatus];
+
+export const ListOrdersStatus = {
+  pending: "pending",
+  processing: "processing",
+  shipped: "shipped",
+  completed: "completed",
+  cancelled: "cancelled",
+} as const;
+
+export type ListCustomersParams = {
+  page?: number;
+  limit?: number;
+  search?: string;
+};
