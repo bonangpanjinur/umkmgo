@@ -59,9 +59,9 @@ export default function KategoriPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Kategori Bisnis</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Kategori Bisnis</h1>
             <p className="text-sm text-gray-500">8 kategori F&B default — setiap kategori punya tema toko unik</p>
           </div>
           <Button onClick={() => { setForm(EMPTY); setEditItem(null); setShowForm(true); }}>

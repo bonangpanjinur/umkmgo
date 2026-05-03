@@ -73,7 +73,7 @@ export default function Catalog() {
     <DashboardLayout>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-display font-bold text-foreground">Katalog Produk</h1>
+          <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">Katalog Produk</h1>
           <p className="text-muted-foreground mt-1">Kelola barang jualan di toko Anda.</p>
         </div>
         

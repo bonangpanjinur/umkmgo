@@ -31,7 +31,7 @@ export default function ShippingPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Pengiriman</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Pengiriman</h1>
           <p className="text-sm text-gray-500 mt-1">Atur kurir dan lokasi pengiriman toko Anda</p>
         </div>
 

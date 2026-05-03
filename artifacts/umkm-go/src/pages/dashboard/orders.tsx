@@ -89,9 +89,9 @@ export default function OrdersPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Pesanan</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Pesanan</h1>
             <p className="text-sm text-gray-500 mt-1">Kelola pesanan dari pelanggan Anda</p>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -127,7 +127,7 @@ export default function OrdersPage() {
         </div>
 
         {/* Orders Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
           {isLoading ? (
             <div className="p-8 text-center text-gray-500">Memuat pesanan...</div>
           ) : filtered.length === 0 ? (

@@ -34,8 +34,8 @@ export default function AdminRevenue() {
 
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Revenue Monitoring</h2>
+      <div className="flex flex-wrap items-center justify-between mb-6 gap-3">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900">Revenue Monitoring</h2>
         <Select value={period} onValueChange={(v) => setPeriod(v as any)}>
           <SelectTrigger className="w-36 bg-white">
             <SelectValue />

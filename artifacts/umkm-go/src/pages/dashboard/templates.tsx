@@ -72,7 +72,7 @@ export default function TemplatesPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Template Toko</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Template Toko</h1>
           <p className="text-sm text-gray-500 mt-1">Pilih tampilan storefront yang sesuai brand Anda</p>
         </div>
 

@@ -37,7 +37,7 @@ export default function AdminHealth() {
 
   return (
     <AdminLayout>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Platform Health Monitor</h2>
+      <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Platform Health Monitor</h2>
 
       {/* Main KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

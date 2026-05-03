@@ -69,12 +69,12 @@ export default function PembayaranPage() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Approve Pembayaran</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Approve Pembayaran</h1>
           <p className="text-sm text-gray-500">Verifikasi bukti transfer & aktivasi paket tenant</p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
             <p className="text-3xl font-bold text-yellow-700">{pending.length}</p>
             <p className="text-sm text-yellow-600">Menunggu Review</p>
@@ -123,7 +123,7 @@ export default function PembayaranPage() {
         {/* History */}
         <div>
           <h2 className="font-semibold text-gray-800 mb-3">Riwayat Pembayaran</h2>
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">

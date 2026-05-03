@@ -111,7 +111,7 @@ export default function POSPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-8rem)]">
         {/* Left: Product Grid */}
         <div className="flex-1 flex flex-col min-h-0">
           {/* Order Type */}
@@ -192,7 +192,7 @@ export default function POSPage() {
         </div>
 
         {/* Right: Cart */}
-        <div className="lg:w-80 flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm">
+        <div className="md:w-72 lg:w-80 flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm">
           <div className="p-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="font-bold text-gray-900">
               {orderType === "dine-in" && tableNumber

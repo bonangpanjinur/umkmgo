@@ -71,11 +71,9 @@ export default function AdminPlansPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Manajemen Paket</h1>
-            <p className="text-sm text-gray-500 mt-1">Kelola paket langganan dan harga platform</p>
-          </div>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Manajemen Paket</h1>
+          <p className="text-sm text-gray-500 mt-1">Kelola paket langganan dan harga platform</p>
         </div>
 
         {/* Stats */}

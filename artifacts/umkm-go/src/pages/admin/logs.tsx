@@ -36,7 +36,7 @@ export default function AdminLogs() {
 
   return (
     <AdminLayout>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Audit Logs</h2>
+      <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Audit Logs</h2>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">

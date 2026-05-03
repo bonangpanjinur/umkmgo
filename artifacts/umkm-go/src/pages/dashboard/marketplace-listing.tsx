@@ -35,9 +35,9 @@ export default function MarketplaceListingPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Listing Marketplace</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Listing Marketplace</h1>
             <p className="text-sm text-gray-500">Kelola tampilan toko di marketplace publik UMKM Go</p>
           </div>
           <div className="flex items-center gap-3">

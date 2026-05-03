@@ -25,7 +25,7 @@ export default function SeoPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">SEO & Visibilitas</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">SEO & Visibilitas</h1>
           <p className="text-sm text-gray-500 mt-1">Optimalkan toko agar mudah ditemukan di mesin pencari</p>
         </div>
 

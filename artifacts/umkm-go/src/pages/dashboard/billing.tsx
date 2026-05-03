@@ -79,7 +79,7 @@ export default function BillingPage() {
   return (
     <DashboardLayout>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Billing & Subscription</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Billing & Subscription</h1>
         <p className="text-gray-500">Kelola paket langganan Anda</p>
       </div>
 

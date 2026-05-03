@@ -84,9 +84,9 @@ export default function CustomersPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Pelanggan</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Pelanggan</h1>
             <p className="text-sm text-gray-500 mt-1">Kelola data pelanggan toko Anda</p>
           </div>
           <Button onClick={() => { setShowForm(true); setForm(EMPTY_FORM); }}>
@@ -107,7 +107,7 @@ export default function CustomersPage() {
         </div>
 
         {/* Customer List */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
           {isLoading ? (
             <div className="p-8 text-center text-gray-500">Memuat pelanggan...</div>
           ) : customers.length === 0 ? (

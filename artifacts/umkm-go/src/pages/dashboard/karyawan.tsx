@@ -101,9 +101,9 @@ export default function KaryawanPage() {
   return (
     <DashboardLayout>
       <div className="space-y-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Karyawan</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Karyawan</h1>
             <p className="text-sm text-gray-500">Kelola tim, shift, dan penggajian</p>
           </div>
           <Button onClick={() => { setForm(EMPTY); setEditItem(null); setShowForm(true); }}>
@@ -113,7 +113,7 @@ export default function KaryawanPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-sm text-gray-500">Total Karyawan</p>
             <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
@@ -139,7 +139,7 @@ export default function KaryawanPage() {
               <div className="relative max-w-xs">
                 <Input placeholder="Cari karyawan..." value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
                 {filtered.length === 0 ? (
                   <div className="p-8 text-center">
                     <Users className="h-10 w-10 text-gray-200 mx-auto mb-2" />

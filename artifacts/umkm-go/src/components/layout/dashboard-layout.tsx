@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
@@ -78,8 +78,6 @@ const navSections: NavSection[] = [
   },
 ];
 
-const allItems = navSections.flatMap((s) => s.items);
-
 function NavLink({
   href,
   label,
@@ -106,113 +104,125 @@ function NavLink({
   );
 }
 
+function SidebarContent({ location, user, logout, onNav }: { location: string; user: any; logout: () => void; onNav?: () => void }) {
+  return (
+    <>
+      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
+        {navSections.map((section) => (
+          <div key={section.label}>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 mb-1">
+              {section.label}
+            </p>
+            <div className="space-y-0.5">
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.href}
+                  {...item}
+                  isActive={location === item.href}
+                  onClick={onNav}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4 border-t border-gray-100">
+        <div className="flex items-center gap-3 px-2 py-2 mb-2 rounded-xl bg-gray-50">
+          <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm flex-shrink-0">
+            {user?.name?.charAt(0) || "U"}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-bold text-foreground truncate">{user?.name}</span>
+            <span className="text-xs text-muted-foreground truncate capitalize">{user?.tier ?? "Basic"} Plan</span>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 text-xs"
+          onClick={logout}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Keluar
+        </Button>
+      </div>
+    </>
+  );
+}
+
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { data: user } = useAuth();
   const logout = useLogoutAction();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 z-10">
+      {/* Desktop/Tablet-landscape Sidebar — visible at lg (1024px+) */}
+      <aside className="hidden lg:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 z-10">
         <div className="p-5 flex items-center gap-3 border-b border-gray-100">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
             <StoreIcon className="w-5 h-5 text-white" />
           </div>
           <span className="font-display font-bold text-xl text-foreground">UMKM Go</span>
         </div>
-
-        <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
-          {navSections.map((section) => (
-            <div key={section.label}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 mb-1">
-                {section.label}
-              </p>
-              <div className="space-y-0.5">
-                {section.items.map((item) => (
-                  <NavLink key={item.href} {...item} isActive={location === item.href} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="p-4 border-t border-gray-100">
-          <div className="flex items-center gap-3 px-2 py-2 mb-2 rounded-xl bg-gray-50">
-            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm flex-shrink-0">
-              {user?.name?.charAt(0) || "U"}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-bold text-foreground truncate">{user?.name}</span>
-              <span className="text-xs text-muted-foreground truncate capitalize">{user?.tier ?? "Basic"} Plan</span>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 text-xs"
-            onClick={logout}
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Keluar
-          </Button>
-        </div>
+        <SidebarContent location={location} user={user} logout={logout} />
       </aside>
 
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-20">
+      {/* Mobile + Tablet Portrait Header — visible below lg */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-30">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
             <StoreIcon className="w-4 h-4 text-white" />
           </div>
           <span className="font-display font-bold text-lg text-foreground">UMKM Go</span>
         </div>
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-lg hover:bg-gray-100">
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        <button
+          onClick={() => setDrawerOpen(!drawerOpen)}
+          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          aria-label="Toggle menu"
+        >
+          {drawerOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Drawer Overlay (mobile + tablet portrait) */}
       <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed inset-0 z-10 bg-white pt-14 md:hidden flex flex-col overflow-y-auto"
-          >
-            <div className="p-4 space-y-4 flex-1">
-              {navSections.map((section) => (
-                <div key={section.label}>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">
-                    {section.label}
-                  </p>
-                  <div className="space-y-0.5">
-                    {section.items.map((item) => (
-                      <NavLink
-                        key={item.href}
-                        {...item}
-                        isActive={location === item.href}
-                        onClick={() => setMobileOpen(false)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="p-4 border-t border-gray-100">
-              <Button variant="outline" className="w-full text-red-600" onClick={logout}>
-                <LogOut className="w-4 h-4 mr-2" /> Keluar
-              </Button>
-            </div>
-          </motion.div>
+        {drawerOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="lg:hidden fixed inset-0 z-20 bg-black/40"
+              onClick={() => setDrawerOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: "tween", duration: 0.22 }}
+              className="lg:hidden fixed top-0 left-0 bottom-0 z-20 w-72 bg-white shadow-2xl flex flex-col pt-14"
+            >
+              <SidebarContent
+                location={location}
+                user={user}
+                logout={logout}
+                onNav={() => setDrawerOpen(false)}
+              />
+            </motion.aside>
+          </>
         )}
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-60 pt-14 md:pt-0 min-h-screen">
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">{children}</div>
+      <main className="flex-1 lg:ml-60 pt-14 lg:pt-0 min-h-screen">
+        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">{children}</div>
       </main>
     </div>
   );

@@ -68,9 +68,9 @@ export default function AdminAddonsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Kelola Add-on</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Kelola Add-on</h1>
             <p className="text-sm text-gray-500">Produk tambahan yang bisa dibeli terpisah dari paket</p>
           </div>
           <Button onClick={() => { setForm(EMPTY); setEditItem(null); setShowForm(true); }}>
@@ -79,7 +79,7 @@ export default function AdminAddonsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-indigo-50 rounded-lg"><Tag className="h-5 w-5 text-indigo-600" /></div>
@@ -101,7 +101,7 @@ export default function AdminAddonsPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">

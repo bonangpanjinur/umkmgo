@@ -57,7 +57,7 @@ export default function Settings() {
   return (
     <DashboardLayout>
       <div className="mb-8 max-w-3xl">
-        <h1 className="text-3xl font-display font-bold text-foreground">Pengaturan Toko</h1>
+        <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground">Pengaturan Toko</h1>
         <p className="text-muted-foreground mt-1">Ubah informasi publik toko Anda.</p>
       </div>
 

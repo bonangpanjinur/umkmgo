@@ -72,15 +72,13 @@ export default function KurirPage() {
   return (
     <DashboardLayout>
       <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Kurir & Pengiriman</h1>
-            <p className="text-sm text-gray-500">Kelola pengiriman internal dan resi ekspedisi</p>
-          </div>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Kurir & Pengiriman</h1>
+          <p className="text-sm text-gray-500">Kelola pengiriman internal dan resi ekspedisi</p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-yellow-700">{stats.menunggu}</p>
             <p className="text-sm text-yellow-600">Menunggu</p>

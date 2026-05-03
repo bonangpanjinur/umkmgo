@@ -63,12 +63,12 @@ export default function KeuanganPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Keuangan</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Keuangan</h1>
             <p className="text-sm text-gray-500">Laporan laba, HPP, dan analitik keuangan</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Select value={period} onValueChange={setPeriod}>
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -180,7 +180,7 @@ export default function KeuanganPage() {
           </TabsContent>
 
           <TabsContent value="produk">
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mt-4">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto mt-4">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
@@ -209,7 +209,7 @@ export default function KeuanganPage() {
           </TabsContent>
 
           <TabsContent value="kas">
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mt-4">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto mt-4">
               <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="font-semibold text-gray-800">Kas Masuk & Keluar</h3>
                 <Button size="sm">+ Catat Kas</Button>

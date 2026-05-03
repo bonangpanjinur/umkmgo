@@ -58,7 +58,7 @@ export default function MetrikPage() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Metrik Platform</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Metrik Platform</h1>
           <p className="text-sm text-gray-500">MRR, pertumbuhan tenant, ARPU, dan churn</p>
         </div>
 

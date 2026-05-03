@@ -68,12 +68,12 @@ export default function AdminMarketplacePage() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Moderasi Marketplace</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Moderasi Marketplace</h1>
           <p className="text-sm text-gray-500">Pantau dan moderasi toko yang listing di marketplace publik</p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-green-700">{stats.aktif}</p>
             <p className="text-sm text-green-600">Toko Aktif</p>
@@ -104,7 +104,7 @@ export default function AdminMarketplacePage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">

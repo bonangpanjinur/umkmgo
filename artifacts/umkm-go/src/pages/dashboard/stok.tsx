@@ -115,9 +115,9 @@ export default function StokPage() {
   return (
     <DashboardLayout>
       <div className="space-y-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Stok & Opname</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Stok & Opname</h1>
             <p className="text-sm text-gray-500">Pantau stok dan lakukan opname berkala</p>
           </div>
           <Button onClick={() => { setOpnameData({}); setShowOpname(true); }}>
@@ -149,7 +149,7 @@ export default function StokPage() {
           </TabsList>
 
           <TabsContent value="stok">
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mt-4">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto mt-4">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
@@ -199,7 +199,7 @@ export default function StokPage() {
           </TabsContent>
 
           <TabsContent value="riwayat">
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mt-4">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto mt-4">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">

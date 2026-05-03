@@ -73,9 +73,9 @@ export default function BahanBakuPage() {
   return (
     <DashboardLayout>
       <div className="space-y-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Bahan Baku</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Bahan Baku</h1>
             <p className="text-sm text-gray-500 mt-0.5">Kelola inventaris bahan baku & supplier</p>
           </div>
           <Button onClick={openAdd}>
@@ -85,7 +85,7 @@ export default function BahanBakuPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-sm text-gray-500">Total Item</p>
             <p className="text-2xl font-bold text-gray-900">{bahans.length}</p>

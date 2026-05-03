@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowRight, CheckCircle2, ShoppingCart, ChefHat, Package,
-  BarChart2, Globe, Store, Smartphone, Users, Star, Zap, TrendingUp
+  ArrowRight, CheckCircle2, ShoppingCart, Package,
+  BarChart2, Globe, Store, Smartphone, Users, Star, Zap, Menu, X
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const features = [
   { icon: ShoppingCart, title: "Kasir POS F&B", desc: "Dine-in, takeaway, delivery. QRIS + tunai. Cetak struk. KDS dapur real-time.", color: "bg-indigo-50 text-indigo-600" },
@@ -38,7 +39,16 @@ const plans = [
   { name: "Premium", price: "549rb", period: "/bulan", features: ["Outlet tak terbatas", "Kurir internal", "Custom domain gratis", "AI insight"], color: "border-amber-400", cta: "Mulai Premium" },
 ];
 
+const NAV_LINKS = [
+  { href: "/features", label: "Fitur" },
+  { href: "/pricing", label: "Harga" },
+  { href: "/marketplace", label: "Marketplace" },
+  { href: "/faq", label: "FAQ" },
+];
+
 export default function Landing() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
@@ -51,20 +61,57 @@ export default function Landing() {
             <span className="font-bold text-xl text-gray-900">UMKM Go</span>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-            <Link href="/features" className="hover:text-indigo-600 transition-colors">Fitur</Link>
-            <Link href="/pricing" className="hover:text-indigo-600 transition-colors">Harga</Link>
-            <Link href="/marketplace" className="hover:text-indigo-600 transition-colors">Marketplace</Link>
-            <Link href="/faq" className="hover:text-indigo-600 transition-colors">FAQ</Link>
+            {NAV_LINKS.map((l) => (
+              <Link key={l.href} href={l.href} className="hover:text-indigo-600 transition-colors">{l.label}</Link>
+            ))}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-indigo-600 transition-colors hidden sm:block">Masuk</Link>
-            <Link href="/register">
-              <Button className="rounded-full bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">
-                Coba Gratis 14 Hari <ArrowRight className="ml-1.5 w-4 h-4" />
+            <Link href="/register" className="hidden sm:block">
+              <Button className="rounded-full bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 text-sm px-4">
+                Coba Gratis <ArrowRight className="ml-1.5 w-4 h-4" />
               </Button>
             </Link>
+            <button
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
+        {/* Mobile Menu Dropdown */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="md:hidden absolute top-16 left-0 right-0 bg-white border-b border-gray-100 shadow-lg px-4 py-4 space-y-1"
+            >
+              {NAV_LINKS.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                >
+                  {l.label}
+                </Link>
+              ))}
+              <div className="pt-2 border-t border-gray-100 flex gap-2">
+                <Link href="/login" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full rounded-full text-sm">Masuk</Button>
+                </Link>
+                <Link href="/register" className="flex-1" onClick={() => setMobileMenuOpen(false)}>
+                  <Button className="w-full rounded-full bg-indigo-600 hover:bg-indigo-700 text-sm">Daftar Gratis</Button>
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* Hero */}
@@ -218,8 +265,8 @@ export default function Landing() {
             <h2 className="text-3xl font-bold text-gray-900 mb-3">Kenapa UMKM Go Beda dari Kompetitor?</h2>
             <p className="text-gray-500">Yang sering jadi keluhan pengguna Moka, Pawoon, Olsera, dan Majoo</p>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
+            <table className="w-full text-sm min-w-[400px]">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="text-left p-4 font-semibold text-gray-600">Fitur</th>

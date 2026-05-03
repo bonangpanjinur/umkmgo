@@ -161,9 +161,9 @@ export default function KDSPage() {
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dapur (KDS)</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Dapur (KDS)</h1>
             <p className="text-sm text-gray-500">Kitchen Display System — antrian pesanan real-time</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => toast({ title: "Pesanan diperbarui" })}>

@@ -81,9 +81,9 @@ export default function SupportPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div className="flex flex-wrap items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Bantuan & Support</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Bantuan & Support</h1>
           <p className="text-gray-500 text-sm">Ajukan pertanyaan atau laporkan masalah ke tim kami</p>
         </div>
         <Button onClick={() => setShowCreate(true)} className="gap-2">

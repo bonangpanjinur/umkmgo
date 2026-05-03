@@ -89,7 +89,7 @@ export default function AdminTickets() {
 
   return (
     <AdminLayout>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Support Tickets</h2>
+      <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Support Tickets</h2>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
