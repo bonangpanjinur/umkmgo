@@ -1,0 +1,780 @@
+Rencana SaaS POS UMKM F&B (Multi-Tenant) — Revisi 2
+
+Update fokus: tema toko per kategori bisnis, custom domain sebagai fitur berbayar, kontrol penuh Super Admin atas feature flags & monetisasi, plus rekomendasi strategi bisnis.
+
+
+
+1. Aktor & Hak Akses
+
+
+
+
+
+Super Admin — kelola tenant, paket, fitur berbayar (theme/domain/modul), moderasi marketplace, metrik platform, approve pembayaran langganan.
+
+
+
+Owner UMKM — akses penuh tokonya, kelola karyawan, paket aktif, tema, domain.
+
+
+
+Manager Outlet — operasional, opname, approve void/refund.
+
+
+
+Kasir — POS, pembayaran, cetak struk.
+
+
+
+Staff Dapur (KDS) — antrian order.
+
+
+
+Staff Gudang — stok, opname, terima bahan.
+
+
+
+Kurir Internal — antaran, update status, bukti foto.
+
+
+
+Pelanggan Marketplace — browse, checkout, lacak pesanan.
+
+Roles disimpan di tabel user_roles terpisah + has_role() SECURITY DEFINER.
+
+
+
+2. Modul Inti
+
+2.1 POS (F&B-first)
+
+Dine-in (nomor meja) / Take-away / Delivery · varian + add-on/topping + modifier · split & merge bill · diskon, promo, voucher, happy hour · pajak PB1 + service charge · Cash + QRIS statis (upload QR per outlet, kasir konfirmasi) · cetak struk PDF/thermal · KDS · shift kasir + cash drawer · void/refund + approval · PWA offline mode.
+
+2.2 HPP & Resep
+
+Bahan baku + supplier · resep (BoM) per menu · HPP otomatis (moving average / FIFO) · margin/markup view · yield/waste factor · auto-deduct stok saat penjualan.
+
+2.3 Stok & Stok Opname
+
+Multi-outlet · PO ke supplier · transfer antar outlet · opname terjadwal + jurnal selisih · alert stok minimum & alert kadaluarsa (krusial F&B) · audit trail.
+
+2.4 Karyawan
+
+Data, role, shift, absensi via PIN/QR di POS, komisi/tip, rekap gaji, log aktivitas.
+
+2.5 Keuangan
+
+Kas masuk/keluar · laporan penjualan, laba kotor (revenue − HPP), laba bersih · profitability per produk/kasir/jam (peak hour analysis) · rekap cash vs QRIS · export Excel/PDF.
+
+2.6 Marketplace Publik
+
+Storefront publik per toko · katalog kategori + search + lokasi · produk fisik & digital (e-book resep, voucher, kelas) · checkout, rating, review · moderasi super admin.
+
+2.7 Pengiriman & Kurir
+
+
+
+
+
+Kurir internal: akun login, assign manual, update status + foto, ongkir flat / radius.
+
+
+
+Kurir eksternal (JNE, J&T, SiCepat, AnterAja, Pos, GoSend, GrabExpress): MVP pakai input resi manual + link tracking; roadmap integrasi Biteship/RajaOngkir.
+
+
+
+3. Tema Toko per Kategori (BARU)
+
+Setiap toko publik (storefront marketplace + landing toko di domain.com/{namatoko}) memakai tema yang disesuaikan dengan kategori bisnis. MVP: 1 tema gratis per kategori, sisanya jadi tema premium berbayar di kemudian hari.
+
+Kategori yang disiapkan di MVP (semua F&B-friendly)
+
+
+
+
+
+Coffee Shop / Kedai Kopi — hangat, earthy tones, hero foto biji kopi, menu by section (Espresso/Manual Brew/Signature), dengan info "open hours" & "wifi/quiet area".
+
+
+
+Resto Ayam / Fast Food — bold, kontras tinggi, foto besar combo meal, highlight paket hemat, sticky CTA "Pesan Sekarang".
+
+
+
+Snack / Cemilan / Frozen Food — playful, bright, grid produk rapat, badge "Best Seller", "New", "Frozen", info shelf-life.
+
+
+
+Bakery / Pastry / Dessert — elegan, soft pastel, fokus visual produk, layout magazine, info allergen.
+
+
+
+Warung Makan / Rumah Makan Padang/Sunda — homey, motif tradisional ringan, menu prasmanan list, info "halal".
+
+
+
+Minuman Kekinian / Boba / Juice Bar — vibrant gradient, animasi ringan, builder topping, level sugar/ice di product page.
+
+
+
+Catering / Meal Prep / Healthy Food — clean, infografis nutrisi (kcal, protein), paket mingguan, jadwal pengantaran.
+
+
+
+Umum / Generic F&B — fallback netral untuk yang belum cocok kategori manapun.
+
+Komponen tema (dapat dikustom owner)
+
+
+
+
+
+Logo, nama toko, tagline.
+
+
+
+1–2 warna brand (override pada pallete tema).
+
+
+
+Hero image / banner.
+
+
+
+Layout menu (grid / list / magazine — preset per tema).
+
+
+
+Jam buka, alamat, peta, sosmed, WhatsApp CTA.
+
+Roadmap tema premium
+
+Tema variant tambahan per kategori (mis. "Coffee Shop — Minimal Mono", "Coffee Shop — Industrial Dark") = dijual lepas via Super Admin (one-time atau add-on bulanan), terlepas dari paket langganan. Super admin yang upload, harga, dan toggle aktif/tidak.
+
+
+
+4. Domain & Storefront (BARU)
+
+
+
+
+
+Default (gratis, semua paket): path-based → marketplace.app.com/{namatoko} (slug auto dari nama toko, bisa edit owner).
+
+
+
+Subdomain (Pro & Premium): {namatoko}.app.com.
+
+
+
+Custom Domain (Premium / add-on berbayar): owner connect domain miliknya sendiri (namatoko.com) — pakai DNS A record + verifikasi TXT, SSL otomatis.
+
+
+
+Super admin bisa toggle apakah custom domain termasuk paket Premium atau jadi add-on terpisah (lebih fleksibel untuk monetisasi).
+
+
+
+5. Langganan, Paket & Feature Flags (Super Admin Full Control)
+
+Super admin pegang dashboard kontrol monetisasi — dia bisa atur seluruh aspek paket tanpa perlu bantuan developer.
+
+Yang bisa diatur Super Admin per paket
+
+
+
+
+
+Nama paket, harga (bulanan + tahunan, diskon tahunan), durasi trial.
+
+
+
+Limit: jumlah outlet, karyawan, produk, transaksi/bulan, ukuran storage gambar.
+
+
+
+Feature flags ON/OFF: marketplace, KDS, multi-outlet, kurir internal, produk digital, laporan lanjutan, export Excel, API, integrasi printer thermal, integrasi kurir eksternal otomatis, dll.
+
+
+
+Tema: tema mana yang gratis vs berbayar (bisa beda per paket — Premium dapat akses tema premium tertentu gratis).
+
+
+
+Domain: subdomain on/off, custom domain on/off / add-on.
+
+
+
+Add-on terpisah (bukan bagian paket, dibeli lepas): tema premium tambahan, custom domain, integrasi kurir API, slot outlet ekstra, slot karyawan ekstra.
+
+Default 3 paket starter (super admin bebas ubah)
+
+
+
+
+
+
+
+Fitur
+
+
+
+Basic
+
+
+
+Pro
+
+
+
+Premium
+
+
+
+
+
+Outlet
+
+
+
+1
+
+
+
+3
+
+
+
+Unlimited
+
+
+
+
+
+Karyawan
+
+
+
+3
+
+
+
+15
+
+
+
+Unlimited
+
+
+
+
+
+Produk
+
+
+
+50
+
+
+
+300
+
+
+
+Unlimited
+
+
+
+
+
+POS, HPP, Stok dasar
+
+
+
+✅
+
+
+
+✅
+
+
+
+✅
+
+
+
+
+
+KDS, Shift, Opname lanjut
+
+
+
+—
+
+
+
+✅
+
+
+
+✅
+
+
+
+
+
+Keuangan lengkap + export
+
+
+
+—
+
+
+
+✅
+
+
+
+✅
+
+
+
+
+
+Marketplace listing
+
+
+
+—
+
+
+
+✅
+
+
+
+✅
+
+
+
+
+
+Kurir internal
+
+
+
+—
+
+
+
+—
+
+
+
+✅
+
+
+
+
+
+Produk digital
+
+
+
+—
+
+
+
+—
+
+
+
+✅
+
+
+
+
+
+Tema gratis kategori
+
+
+
+1 default
+
+
+
+1 per kategori
+
+
+
+Semua tema dasar
+
+
+
+
+
+Subdomain nama.app.com
+
+
+
+—
+
+
+
+✅
+
+
+
+✅
+
+
+
+
+
+Custom domain
+
+
+
+—
+
+
+
+Add-on
+
+
+
+✅
+
+
+
+
+
+Tema premium
+
+
+
+Add-on
+
+
+
+Add-on
+
+
+
+Diskon / 1 free
+
+
+
+
+
+Integrasi kurir API
+
+
+
+—
+
+
+
+Add-on
+
+
+
+✅
+
+
+
+
+
+Support
+
+
+
+Email
+
+
+
+Email + Chat
+
+
+
+Priority + WA
+
+Pembayaran langganan
+
+MVP: QRIS statis platform + upload bukti → super admin approve manual → paket aktif + invoice PDF auto.
+Trial 14 hari otomatis · notifikasi H-7/H-3 · grace period 3 hari → mode read-only.
+Roadmap: Midtrans/Xendit recurring + auto-renewal.
+
+
+
+6. Arsitektur Multi-Tenant
+
+Single DB, shared schema, tenant_id di setiap tabel + RLS Supabase. Storefront publik pakai endpoint read-only tanpa auth, hanya expose kolom aman. Custom domain di-resolve via middleware (lookup domains table → tenant_id).
+
+
+
+7. Peta Halaman
+
+Public:
+  /                       Landing SaaS (pitch, paket, testimoni, daftar)
+  /marketplace            Etalase semua toko + filter kategori
+  /{namatoko}             Storefront toko (path-based default)
+  /track/{order_id}       Lacak pesanan
+  /login, /register
+
+Tenant App (/app):
+  /pos /kds /produk /bahan-baku /stok /karyawan
+  /keuangan /marketplace /kurir
+  /pengaturan/toko        (tema, logo, warna, jam buka)
+  /pengaturan/domain      (subdomain & custom domain)
+  /pengaturan/paket       (lihat paket aktif, upgrade, beli add-on)
+
+Kurir:
+  /kurir                  Daftar antaran mobile-first
+
+Super Admin (/admin):
+  /tenants                Daftar tenant + status langganan
+  /paket                  CRUD paket + feature flags + limit
+  /addons                 CRUD add-on (tema, domain, kurir API, slot)
+  /tema                   Upload & kelola tema, atur harga
+  /pembayaran             Approve bukti transfer langganan + addon
+  /marketplace            Moderasi produk & toko
+  /kategori               Kelola kategori bisnis (default 8 di MVP)
+  /metrik                 MRR, churn, paket terlaris, tenant aktif
+
+
+
+8. Detail Teknis (untuk implementasi)
+
+
+
+
+
+Stack: TanStack Start, Tailwind v4, shadcn/ui, Lovable Cloud (Supabase) — DB/Auth/Storage/Edge functions, Lovable AI Gateway untuk fitur AI opsional (rekomendasi menu, copywriting otomatis storefront).
+
+
+
+Auth: email+password, Google OAuth · roles via user_roles + has_role() SECURITY DEFINER · semua tabel tenant pakai RLS.
+
+
+
+Tema engine: setiap tema = React component set + JSON schema kustomisasi (warna, layout) → di-render dinamis di storefront route. Tema disimpan sbg key di tabel tenants + tenant_theme_config.
+
+
+
+Custom domain: tabel domains(tenant_id, hostname, status, ssl_status) · middleware SSR resolve hostname → tenant. Edukasi user soal A record + TXT verify (mirip pattern Lovable).
+
+
+
+Server fns (createServerFn) untuk transaksi POS atomik (order + decrement stok + jurnal) via Postgres function.
+
+
+
+Storage bucket: struk, foto produk, QRIS statis, bukti transfer, foto bukti antar.
+
+
+
+PWA + IndexedDB untuk POS offline.
+
+
+
+Print: window.print() + CSS struk; thermal printer via WebUSB/Bluetooth (Fase 6).
+
+
+
+9. Roadmap Bertahap
+
+Fase 1 — Pondasi & POS Inti
+Auth + multi-tenant + RLS + roles · Outlet · Produk + varian + modifier · POS (dine-in/take-away, cash + QRIS statis, struk PDF) · shift kasir · laporan penjualan dasar.
+
+Fase 2 — HPP, Stok & KDS
+Bahan baku, resep, HPP otomatis, stok per outlet, opname, PO, alert minimum + kadaluarsa, KDS.
+
+Fase 3 — Karyawan & Keuangan
+Karyawan, shift, absensi, kas masuk/keluar, laporan laba & export.
+
+Fase 4 — Super Admin, Paket & Feature Flags
+Plans + flags + limits + trial + grace period · dashboard super admin · approve pembayaran QRIS · enforce limit di seluruh app · sistem add-on.
+
+Fase 5 — Marketplace, Tema & Domain
+Storefront publik path-based · 8 kategori + 1 tema default per kategori · pengaturan tema toko · subdomain · custom domain (Premium/add-on) · pesanan online + checkout pelanggan · kurir internal + akun kurir · input resi manual ekspedisi.
+
+Fase 6 — Polish & Roadmap Lanjut
+PWA offline · thermal printer · integrasi Biteship/RajaOngkir · Midtrans/Xendit recurring · marketplace tema premium · AI insight (menu profitable, prediksi stok, copywriting toko).
+
+
+
+10. Saran Strategi Bisnis (BARU)
+
+Rangkuman strategi monetisasi & growth supaya SaaS ini compounding, bukan sekadar fitur lengkap.
+
+A. Model Monetisasi Bertingkat
+
+
+
+
+
+Langganan paket — recurring revenue utama (Basic/Pro/Premium).
+
+
+
+Add-on lepas — margin tinggi & low effort: custom domain, tema premium, slot outlet/karyawan tambahan, integrasi kurir API.
+
+
+
+Take-rate marketplace — opsional ambil 1–3% dari transaksi marketplace publik (bukan POS internal toko — supaya owner tidak merasa "dipajakin" untuk transaksi kasirnya sendiri). Ini revenue stream yang skalanya ikut volume tenant.
+
+
+
+QRIS dynamic + payment gateway (roadmap) — kerjasama dengan PG, ambil revenue share dari MDR.
+
+
+
+Marketplace bahan baku (roadmap jauh) — connect tenant ke supplier grosir, ambil komisi.
+
+B. Strategi Akuisisi UMKM F&B
+
+
+
+
+
+Trial 14 hari tanpa kartu kredit + onboarding wizard yang impor menu via Excel/CSV (UMKM benci ngetik manual).
+
+
+
+Free Forever Lite (opsional, sangat kecil — 1 outlet, 20 produk, 50 transaksi/bulan, brand "Powered by") supaya viral di UMKM kecil + jadi top-of-funnel.
+
+
+
+Template menu siap pakai per kategori (50 menu coffee shop standar, 30 menu ayam geprek standar) — kurangi friction onboarding.
+
+
+
+Program reseller / mitra konsultan POS lokal — bagi komisi 20–30% recurring; mitra di tiap kota jadi sales + support layer 1.
+
+
+
+Konten edukasi: kalkulator HPP gratis, template laporan keuangan F&B, blog "cara hitung BEP coffee shop" — tarik traffic organic ke landing.
+
+
+
+Case study tenant sukses — testimoni dengan angka konkret (omzet, foodcost %).
+
+C. Retention & Anti-Churn
+
+
+
+
+
+Onboarding berhasil = retention. Wajibkan checklist: 1) input ≥10 produk, 2) selesaikan 1 transaksi POS, 3) cetak 1 struk, dalam 7 hari pertama. Otomatisasi follow-up email/WA.
+
+
+
+Insight mingguan otomatis ke email/WA owner: "Minggu ini omzet naik 12%, menu paling laku Es Kopi Susu, foodcost rata-rata 38% (turun 2%)". Bikin owner merasa "tools ini tahu bisnis saya".
+
+
+
+AI alert anomali: stok turun drastis, foodcost lewat threshold, kasir banyak void → push notif. Ini killer feature untuk Premium.
+
+
+
+Loyalty program tenant: diskon paket tahunan 20%, free upgrade saat referral.
+
+D. Diferensiasi vs Kompetitor (Moka, Pawoon, Olsera, Majoo)
+
+Fokus pada hal yang sering jadi keluhan kompetitor:
+
+
+
+
+
+HPP & resep yang benar-benar akurat (yield, waste, moving avg) — mayoritas kompetitor cuma tracking stok, tidak BoM beneran.
+
+
+
+Marketplace built-in — owner UMKM tidak perlu bikin web sendiri; toko langsung punya storefront publik. Kompetitor jarang punya ini.
+
+
+
+Tema per kategori bisnis — bukan satu template generic; owner merasa "dibuat khusus untuk warung saya".
+
+
+
+Pricing transparan + Bahasa Indonesia native + support WhatsApp (UMKM Indonesia very WA-driven).
+
+
+
+Mode offline POS (PWA) — kritikal di lokasi mall/foodcourt yang wifi sering putus.
+
+E. Pricing Recommendation (titik awal, tunable Super Admin)
+
+
+
+
+
+Basic: Rp 99.000/bulan (atau Rp 990.000/tahun → 2 bulan gratis).
+
+
+
+Pro: Rp 249.000/bulan (atau Rp 2.490.000/tahun).
+
+
+
+Premium: Rp 549.000/bulan (atau Rp 5.490.000/tahun).
+
+
+
+Custom domain add-on: Rp 50.000/bulan atau Rp 500.000/tahun.
+
+
+
+Tema premium: Rp 150.000–Rp 350.000 one-time per tema.
+
+
+
+Slot outlet ekstra (Pro): Rp 75.000/outlet/bulan.
+
+Sweet spot: target ARPU Rp 200–300rb/bulan; margin sehat untuk SaaS Indonesia.
+
+F. Compliance & Trust
+
+
+
+
+
+Faktur Pajak / NPWP toggle di pengaturan toko (untuk yang sudah PKP).
+
+
+
+Halal mark opt-in di storefront.
+
+
+
+Kebijakan privasi & syarat jelas (penting karena pegang data transaksi tenant).
+
+
+
+Backup harian tenant data + export self-service kapan saja.
+
+
+
+11. Yang Perlu Dikonfirmasi Sebelum Mulai
+
+
+
+
+
+cari apa yang belum ada 
+
+
+
+buat yang belum ada
+
+
+
+perbaiki yang sudah ada
+
+
+
+lengkapi jika memang ada saran terbaik
