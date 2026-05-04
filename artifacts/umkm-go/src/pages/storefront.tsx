@@ -1,9 +1,9 @@
 import { useRoute } from "wouter";
 import { useGetStoreBySlug } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, MessageCircle, Store as StoreIcon, Loader2, MapPin, Phone, Star, Clock, ChevronRight, Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { ShoppingBag, MessageCircle, Store as StoreIcon, Loader2, Phone, Star, Clock, Search, SlidersHorizontal, X, Share2, Copy, Check, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 
 type ThemeKey = "coffee" | "fastfood" | "snack" | "bakery" | "warung" | "drinks" | "catering" | "generic";
 
@@ -221,6 +221,8 @@ export default function Storefront() {
   const [priceMin, setPriceMin] = useState<string>("");
   const [priceMax, setPriceMax] = useState<string>("");
   const [sortBy, setSortBy] = useState<SortOption>("default");
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { data: store, isLoading, error } = useGetStoreBySlug(slug);
 
@@ -301,6 +303,51 @@ export default function Storefront() {
     window.open(`https://wa.me/${wa}?text=${text}`, "_blank");
   };
 
+  const storeUrl = `${window.location.origin}/store/${slug}`;
+
+  const copyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(storeUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = storeUrl;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  }, [storeUrl]);
+
+  const shareViaWhatsApp = useCallback(() => {
+    const text = encodeURIComponent(
+      `Cek toko *${store?.name}* di sini! 🛍️\n${storeUrl}`
+    );
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+  }, [store?.name, storeUrl]);
+
+  const shareViaX = useCallback(() => {
+    const text = encodeURIComponent(`Cek toko ${store?.name}! 🛍️ ${storeUrl}`);
+    window.open(`https://x.com/intent/tweet?text=${text}`, "_blank");
+  }, [store?.name, storeUrl]);
+
+  const shareNative = useCallback(async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: store?.name || "Toko Online",
+          text: `Cek toko ${store?.name} di UMKM Go!`,
+          url: storeUrl,
+        });
+        return;
+      } catch {}
+    }
+    setShareOpen(true);
+  }, [store?.name, storeUrl]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -332,9 +379,18 @@ export default function Storefront() {
           backgroundImage: `radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 40%)`
         }} />
         <div className="relative max-w-4xl mx-auto px-4 pt-10 pb-16">
-          <div className="flex items-center gap-2 mb-6">
-            <span className="text-2xl">{t.emoji}</span>
-            <span className="text-white/80 text-sm font-medium">{store.categoryName || "F&B"}</span>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{t.emoji}</span>
+              <span className="text-white/80 text-sm font-medium">{store.categoryName || "F&B"}</span>
+            </div>
+            <button
+              onClick={shareNative}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-sm font-medium transition-all active:scale-95"
+            >
+              <Share2 className="w-4 h-4" />
+              Bagikan
+            </button>
           </div>
           <div className="flex items-end gap-4">
             <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white rounded-2xl p-1.5 shadow-2xl flex-shrink-0">
@@ -752,6 +808,115 @@ export default function Storefront() {
           </motion.div>
         </div>
       )}
+
+      {/* Share Modal */}
+      <AnimatePresence>
+        {shareOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setShareOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 60 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 60 }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="relative bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                <div className="w-10 h-1 rounded-full bg-gray-200" />
+              </div>
+
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h3 className="font-bold text-lg text-gray-900">Bagikan Toko</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Sebarkan link toko kamu!</p>
+                  </div>
+                  <button
+                    onClick={() => setShareOpen(false)}
+                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* URL Preview */}
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-50 border border-gray-200 mb-5">
+                  <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <p className="text-xs text-gray-600 flex-1 truncate font-mono">{storeUrl}</p>
+                </div>
+
+                {/* Share Options */}
+                <div className="grid grid-cols-3 gap-3 mb-5">
+                  {/* Copy Link */}
+                  <button
+                    onClick={copyLink}
+                    className="flex flex-col items-center gap-2 p-3 rounded-2xl border-2 border-gray-100 hover:border-gray-200 transition-all active:scale-95"
+                  >
+                    <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${copied ? "bg-green-100" : "bg-gray-100"}`}>
+                      {copied ? (
+                        <Check className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <Copy className="w-5 h-5 text-gray-600" />
+                      )}
+                    </div>
+                    <span className="text-xs font-semibold text-gray-600">
+                      {copied ? "Tersalin!" : "Salin Link"}
+                    </span>
+                  </button>
+
+                  {/* WhatsApp */}
+                  <button
+                    onClick={() => { shareViaWhatsApp(); setShareOpen(false); }}
+                    className="flex flex-col items-center gap-2 p-3 rounded-2xl border-2 border-gray-100 hover:border-green-200 transition-all active:scale-95"
+                  >
+                    <div className="w-11 h-11 rounded-full bg-green-50 flex items-center justify-center">
+                      <svg viewBox="0 0 24 24" className="w-5 h-5 fill-green-500">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-600">WhatsApp</span>
+                  </button>
+
+                  {/* X / Twitter */}
+                  <button
+                    onClick={() => { shareViaX(); setShareOpen(false); }}
+                    className="flex flex-col items-center gap-2 p-3 rounded-2xl border-2 border-gray-100 hover:border-gray-300 transition-all active:scale-95"
+                  >
+                    <div className="w-11 h-11 rounded-full bg-gray-900 flex items-center justify-center">
+                      <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      </svg>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-600">X / Twitter</span>
+                  </button>
+                </div>
+
+                {/* Copy feedback */}
+                <AnimatePresence>
+                  {copied && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      className="flex items-center gap-2 justify-center py-2 px-4 rounded-xl bg-green-50 border border-green-100"
+                    >
+                      <Check className="w-4 h-4 text-green-600" />
+                      <span className="text-sm text-green-700 font-medium">Link berhasil disalin!</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
