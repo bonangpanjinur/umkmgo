@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ const STATUS_LABELS: Record<string, string> = {
   suspended: "Ditangguhkan",
 };
 
-const STATUS_ICONS: Record<string, JSX.Element> = {
+const STATUS_ICONS: Record<string, ReactElement> = {
   pending_dns: <Clock className="h-4 w-4 text-yellow-500" />,
   verifying: <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />,
   active: <CheckCircle className="h-4 w-4 text-green-500" />,

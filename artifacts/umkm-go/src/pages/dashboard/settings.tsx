@@ -40,7 +40,7 @@ export default function Settings() {
         description: store.description || "",
         whatsapp: store.whatsapp || "",
         logoUrl: store.logoUrl || "",
-        theme: store.theme
+        theme: store.theme as any
       });
     }
   }, [store, form]);

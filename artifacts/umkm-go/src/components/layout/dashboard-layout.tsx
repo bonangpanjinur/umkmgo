@@ -175,20 +175,23 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Mobile + Tablet Portrait Header — visible below lg */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 z-30">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-            <StoreIcon className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-display font-bold text-lg text-foreground">UMKM Go</span>
-        </div>
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center px-3 z-30 gap-2">
         <button
           onClick={() => setDrawerOpen(!drawerOpen)}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          className="p-2 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
           aria-label="Toggle menu"
         >
-          {drawerOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          {drawerOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
         </button>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+            <StoreIcon className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-display font-bold text-base text-foreground truncate">UMKM Go</span>
+        </div>
+        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0 border border-primary/20">
+          {user?.name?.charAt(0)?.toUpperCase() || "U"}
+        </div>
       </div>
 
       {/* Drawer Overlay (mobile + tablet portrait) */}

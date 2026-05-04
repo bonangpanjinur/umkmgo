@@ -3,12 +3,14 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useGetMyStore, useListProducts } from "@workspace/api-client-react";
+import { useGetMyStore, useListProducts, useCreateOrder } from "@workspace/api-client-react";
 import { getToken } from "@/lib/auth";
-import { Search, Plus, Minus, Trash2, ShoppingBag, CreditCard, Smartphone, Receipt, X, Utensils } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingBag, CreditCard, Smartphone, Receipt, X, Utensils, User, Phone, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 const AUTH = () => ({ request: { headers: { Authorization: `Bearer ${getToken()}` } } });
 
@@ -38,6 +40,7 @@ const SERVICE_CHARGE = 0.05;
 
 export default function POSPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>("dine-in");
@@ -49,9 +52,12 @@ export default function POSPage() {
   const [lastOrder, setLastOrder] = useState<any>(null);
   const [includeTax, setIncludeTax] = useState(true);
   const [includeService, setIncludeService] = useState(false);
+  const [buyerName, setBuyerName] = useState("");
+  const [buyerPhone, setBuyerPhone] = useState("");
 
   const { data: store } = useGetMyStore(AUTH());
   const { data: productsData } = useListProducts({ limit: 100 }, AUTH());
+  const createOrderMutation = useCreateOrder(AUTH());
 
   const products = productsData?.data ?? [];
   const filtered = products.filter((p) =>
@@ -82,11 +88,32 @@ export default function POSPage() {
 
   const removeItem = (id: string) => setCart((prev) => prev.filter((c) => c.id !== id));
 
-  const processPayment = () => {
+  const processPayment = async () => {
     if (paymentMethod === "cash" && Number(cashInput.replace(/\D/g, "")) < total) {
       toast({ title: "Uang kurang", variant: "destructive" });
       return;
     }
+    const noteParts = [
+      orderType === "dine-in" && tableNumber ? `Meja: ${tableNumber}` : ORDER_TYPES.find((t) => t.value === orderType)?.label,
+      paymentMethod === "qris" ? "QRIS" : `Tunai: Rp${Number(cashInput.replace(/\D/g, "")).toLocaleString("id-ID")}`,
+    ].filter(Boolean).join(" | ");
+
+    try {
+      await createOrderMutation.mutateAsync({
+        data: {
+          buyerName: buyerName.trim() || "Pelanggan Kasir",
+          buyerPhone: buyerPhone.trim() || "0",
+          items: cart.map((c) => ({ productId: c.id, name: c.name, price: c.price, quantity: c.qty })),
+          totalAmount: total,
+          source: "pos" as any,
+          notes: noteParts,
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+    } catch {
+      toast({ title: "Gagal menyimpan pesanan ke server", description: "Data struk tetap tersimpan lokal.", variant: "destructive" });
+    }
+
     const order = {
       items: cart,
       orderType,
@@ -100,6 +127,7 @@ export default function POSPage() {
       change,
       timestamp: new Date().toLocaleString("id-ID"),
       storeName: store?.name ?? "Toko",
+      buyerName: buyerName.trim() || "Pelanggan Kasir",
     };
     setLastOrder(order);
     setShowPayment(false);
@@ -107,6 +135,8 @@ export default function POSPage() {
     setCart([]);
     setTableNumber("");
     setCashInput("");
+    setBuyerName("");
+    setBuyerPhone("");
   };
 
   return (
@@ -287,6 +317,28 @@ export default function POSPage() {
             <DialogTitle>Pembayaran — {formatIDR(total)}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Optional Customer Info */}
+            <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Info Pelanggan (opsional)</p>
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <Input
+                  placeholder="Nama pelanggan"
+                  value={buyerName}
+                  onChange={(e) => setBuyerName(e.target.value)}
+                  className="h-8 text-sm border-gray-200"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <Input
+                  placeholder="No. HP (opsional)"
+                  value={buyerPhone}
+                  onChange={(e) => setBuyerPhone(e.target.value)}
+                  className="h-8 text-sm border-gray-200"
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setPaymentMethod("cash")}
@@ -341,8 +393,16 @@ export default function POSPage() {
               </div>
             )}
 
-            <Button className="w-full h-12 text-base font-bold" onClick={processPayment}>
-              ✓ Konfirmasi Pembayaran
+            <Button
+              className="w-full h-12 text-base font-bold"
+              onClick={processPayment}
+              disabled={createOrderMutation.isPending}
+            >
+              {createOrderMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Memproses...</>
+              ) : (
+                "✓ Konfirmasi Pembayaran"
+              )}
             </Button>
           </div>
         </DialogContent>

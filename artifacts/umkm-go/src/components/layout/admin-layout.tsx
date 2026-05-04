@@ -166,20 +166,23 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Mobile + Tablet Portrait Header — visible below lg */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-sidebar flex items-center justify-between px-4 z-30">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-red-500 flex items-center justify-center">
-            <ShieldAlert className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-bold text-white">Admin Panel</span>
-        </div>
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-sidebar flex items-center px-3 z-30 gap-2">
         <button
           onClick={() => setDrawerOpen(!drawerOpen)}
-          className="p-2 text-white rounded-lg hover:bg-white/10 transition-colors"
+          className="p-2 text-white rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
           aria-label="Toggle menu"
         >
           {drawerOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-red-500 flex items-center justify-center flex-shrink-0">
+            <ShieldAlert className="w-4 h-4 text-white" />
+          </div>
+          <span className="font-bold text-white truncate">Admin Panel</span>
+        </div>
+        <span className="inline-flex items-center rounded-full bg-red-500/30 border border-red-400/40 px-2 py-0.5 text-xs font-semibold text-red-200 flex-shrink-0">
+          Super Admin
+        </span>
       </div>
 
       {/* Drawer Overlay (mobile + tablet portrait) */}

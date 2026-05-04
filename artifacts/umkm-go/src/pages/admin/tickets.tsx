@@ -60,7 +60,7 @@ export default function AdminTickets() {
   const { data: ticket } = useGetTicket(
     selectedId ?? "",
     {
-      query: { enabled: !!selectedId },
+      query: { enabled: !!selectedId, queryKey: ["/api/tickets", selectedId] },
       request: { headers: { Authorization: `Bearer ${token}` } },
     }
   );

@@ -53,32 +53,40 @@ export default function Landing() {
     <div className="min-h-screen bg-white">
       {/* Navbar */}
       <nav className="fixed top-0 inset-x-0 h-16 bg-white/90 backdrop-blur-md border-b border-gray-100 z-50 flex items-center">
-        <div className="max-w-7xl mx-auto px-4 w-full flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="max-w-7xl mx-auto px-4 w-full flex items-center gap-3">
+          {/* Hamburger — mobile only, LEFT of logo */}
+          <button
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
+          </button>
+          {/* Logo */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
               <Store className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-xl text-gray-900">UMKM Go</span>
           </div>
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+          {/* Desktop Nav Links */}
+          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600 ml-6">
             {NAV_LINKS.map((l) => (
               <Link key={l.href} href={l.href} className="hover:text-indigo-600 transition-colors">{l.label}</Link>
             ))}
           </div>
+          {/* Spacer */}
+          <div className="flex-1" />
+          {/* CTAs */}
           <div className="flex items-center gap-2">
-            <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-indigo-600 transition-colors hidden sm:block">Masuk</Link>
-            <Link href="/register" className="hidden sm:block">
+            <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-indigo-600 transition-colors hidden md:block">Masuk</Link>
+            <Link href="/register">
               <Button className="rounded-full bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 text-sm px-4">
-                Coba Gratis <ArrowRight className="ml-1.5 w-4 h-4" />
+                <span className="hidden sm:inline">Coba Gratis</span>
+                <span className="sm:hidden">Daftar</span>
+                <ArrowRight className="ml-1.5 w-4 h-4" />
               </Button>
             </Link>
-            <button
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
         {/* Mobile Menu Dropdown */}

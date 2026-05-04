@@ -140,6 +140,29 @@ router.post("/admin/users/:id/unsuspend", requireAdmin, async (req, res) => {
   }
 });
 
+router.patch("/admin/users/:id/tier", requireAdmin, async (req, res) => {
+  try {
+    const adminUser = (req as any).user as JwtPayload;
+    const { tier } = req.body as { tier: string };
+    if (!["free", "pro", "enterprise"].includes(tier)) {
+      return res.status(400).json({ error: "Invalid tier" });
+    }
+    await db.update(usersTable).set({ tier: tier as any, updatedAt: new Date() }).where(eq(usersTable.id, req.params.id));
+    await db.insert(adminLogsTable).values({
+      actor: adminUser.email,
+      action: "change_tier",
+      resourceType: "user",
+      resourceId: req.params.id,
+      status: "success",
+      details: `Tier changed to ${tier}`,
+    });
+    res.json({ success: true, message: `Tier changed to ${tier}` });
+  } catch (err) {
+    req.log.error({ err }, "Change tier error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/admin/revenue", requireAdmin, async (req, res) => {
   try {
     const period = req.query.period as string || "month";

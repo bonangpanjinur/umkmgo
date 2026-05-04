@@ -59,7 +59,7 @@ export default function SupportPage() {
   const { data: ticketDetail } = useGetTicket(
     selectedId ?? "",
     {
-      query: { enabled: !!selectedId },
+      query: { enabled: !!selectedId, queryKey: ["/api/tickets", selectedId] },
       request: { headers: { Authorization: `Bearer ${token}` } },
     }
   );

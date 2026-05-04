@@ -35,15 +35,15 @@ export default function AdminRevenue() {
   return (
     <AdminLayout>
       <div className="flex flex-wrap items-center justify-between mb-6 gap-3">
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900">Revenue Monitoring</h2>
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900">Monitoring Revenue</h2>
         <Select value={period} onValueChange={(v) => setPeriod(v as any)}>
-          <SelectTrigger className="w-36 bg-white">
+          <SelectTrigger className="w-40 bg-white">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="week">This Week</SelectItem>
-            <SelectItem value="month">This Month</SelectItem>
-            <SelectItem value="year">This Year</SelectItem>
+            <SelectItem value="week">Minggu Ini</SelectItem>
+            <SelectItem value="month">Bulan Ini</SelectItem>
+            <SelectItem value="year">Tahun Ini</SelectItem>
           </SelectContent>
         </Select>
       </div>
