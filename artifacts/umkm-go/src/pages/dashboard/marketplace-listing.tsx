@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Globe, Eye, Star, ShoppingBag, TrendingUp, Copy, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useGetMyStore } from "@workspace/api-client-react";
+import { useGetMyStore, useListOrders, useGetDashboardStats } from "@workspace/api-client-react";
 import { getToken } from "@/lib/auth";
 
 const AUTH = () => ({ request: { headers: { Authorization: `Bearer ${getToken()}` } } });
@@ -14,9 +14,12 @@ const AUTH = () => ({ request: { headers: { Authorization: `Bearer ${getToken()}
 export default function MarketplaceListingPage() {
   const { toast } = useToast();
   const { data: store } = useGetMyStore(AUTH());
+  const { data: ordersData } = useListOrders({ page: 1, limit: 200 }, AUTH());
+  const { data: stats } = useGetDashboardStats(AUTH());
+
   const [listed, setListed] = useState(true);
   const [tagline, setTagline] = useState("Makanan rumahan lezat dan terjangkau");
-  const [whatsapp, setWhatsapp] = useState("08123456789");
+  const [whatsapp, setWhatsapp] = useState(store?.whatsapp ?? "08123456789");
   const [jamBuka, setJamBuka] = useState("07:00 – 22:00");
   const [halal, setHalal] = useState(true);
   const [delivery, setDelivery] = useState(true);
@@ -25,11 +28,16 @@ export default function MarketplaceListingPage() {
   const slug = store?.slug ?? "toko-saya";
   const storeUrl = `${window.location.origin}/store/${slug}`;
 
-  const stats = [
-    { label: "Total Tayangan", value: "1.234", icon: Eye, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Rating Toko", value: "4.8 ★", icon: Star, color: "text-yellow-600", bg: "bg-yellow-50" },
-    { label: "Pesanan Masuk", value: "87", icon: ShoppingBag, color: "text-green-600", bg: "bg-green-50" },
-    { label: "Konversi", value: "7.1%", icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50" },
+  const totalOrders = ordersData?.data?.length ?? 0;
+  const completedOrders = ordersData?.data?.filter((o) => o.status === "completed").length ?? 0;
+  const conversionRate = stats?.conversionRate ?? 0;
+  const visitors = stats?.visitors ?? 0;
+
+  const kpis = [
+    { label: "Total Tayangan", value: visitors.toLocaleString("id-ID"), icon: Eye, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Pesanan Masuk", value: String(totalOrders), icon: ShoppingBag, color: "text-green-600", bg: "bg-green-50" },
+    { label: "Pesanan Selesai", value: String(completedOrders), icon: Star, color: "text-yellow-600", bg: "bg-yellow-50" },
+    { label: "Konversi", value: `${conversionRate}%`, icon: TrendingUp, color: "text-purple-600", bg: "bg-purple-50" },
   ];
 
   return (
@@ -61,9 +69,9 @@ export default function MarketplaceListingPage() {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats from real data */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((s) => (
+          {kpis.map((s) => (
             <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
               <div className={`p-2 w-fit rounded-lg ${s.bg} mb-3`}>
                 <s.icon className={`h-4 w-4 ${s.color}`} />

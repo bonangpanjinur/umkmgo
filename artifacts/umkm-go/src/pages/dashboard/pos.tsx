@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useGetMyStore, useListProducts, useCreateOrder } from "@workspace/api-client-react";
 import { getToken } from "@/lib/auth";
 import { Search, Plus, Minus, Trash2, ShoppingBag, CreditCard, Smartphone, Receipt, X, Utensils, User, Phone, Loader2 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -385,11 +386,17 @@ export default function POSPage() {
               </div>
             ) : (
               <div className="bg-gray-50 rounded-xl p-6 text-center">
-                <div className="w-32 h-32 bg-white border-2 border-gray-200 rounded-xl mx-auto flex items-center justify-center">
-                  <Smartphone className="h-12 w-12 text-gray-300" />
+                <div className="bg-white rounded-xl p-3 inline-block border-2 border-gray-200 shadow-sm mx-auto">
+                  <QRCodeSVG
+                    value={`UMKMGO-QRIS-${Date.now()}-${total}`}
+                    size={148}
+                    level="M"
+                    includeMargin={false}
+                  />
                 </div>
                 <p className="text-sm text-gray-500 mt-3">Tampilkan QR kepada pelanggan</p>
                 <p className="text-lg font-bold text-gray-900 mt-1">{formatIDR(total)}</p>
+                <p className="text-xs text-gray-400 mt-0.5">QRIS • Scan & Bayar</p>
               </div>
             )}
 

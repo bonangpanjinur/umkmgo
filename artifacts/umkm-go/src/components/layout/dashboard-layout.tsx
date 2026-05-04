@@ -226,9 +226,29 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (newOrders.length === 0) return;
+    // Play notification beep via Web Audio API
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playBeep = (freq: number, start: number, dur: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + dur + 0.05);
+      };
+      playBeep(880, 0, 0.15);
+      playBeep(1100, 0.18, 0.15);
+      playBeep(1320, 0.36, 0.25);
+    } catch {}
+
     newOrders.forEach((order) => {
-      const tableMatch = order.notes?.match(/Meja\s+(\d+)/i);
-      const tableInfo = tableMatch ? ` • Meja ${tableMatch[1]}` : "";
+      const tableMatch = order.notes?.match(/Meja[:\s]+([^\s|]+)/i);
+      const tableInfo = tableMatch ? ` · Meja ${tableMatch[1]}` : "";
       toast({
         title: `🛎️ Pesanan Baru${tableInfo}`,
         description: `${order.buyerName} · ${formatIDR(order.totalAmount)}`,

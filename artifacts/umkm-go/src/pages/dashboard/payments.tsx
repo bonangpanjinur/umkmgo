@@ -1,7 +1,10 @@
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { CreditCard, Smartphone, Building2, CheckCircle, Lock } from "lucide-react";
+import { CreditCard, Smartphone, Building2, CheckCircle, Lock, Loader2 } from "lucide-react";
+import { useListOrders } from "@workspace/api-client-react";
+import { getToken } from "@/lib/auth";
+
+const AUTH = () => ({ request: { headers: { Authorization: `Bearer ${getToken()}` } } });
 
 const methods = [
   {
@@ -33,24 +36,56 @@ const methods = [
   },
 ];
 
-const transactions = [
-  { id: "TRX001", buyer: "Ibu Sari", method: "QRIS", amount: 125000, status: "Berhasil", date: "2026-03-31" },
-  { id: "TRX002", buyer: "Bapak Joko", method: "Transfer BCA", amount: 89000, status: "Berhasil", date: "2026-03-30" },
-  { id: "TRX003", buyer: "Rina K.", method: "QRIS", amount: 45000, status: "Menunggu", date: "2026-03-30" },
-  { id: "TRX004", buyer: "Dewi A.", method: "Transfer Mandiri", amount: 230000, status: "Berhasil", date: "2026-03-29" },
-];
-
 function formatIDR(n: number) {
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR" }).format(n);
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
+}
+
+function detectMethod(notes?: string | null): string {
+  if (!notes) return "Transfer Bank";
+  const n = notes.toLowerCase();
+  if (n.includes("qris")) return "QRIS";
+  if (n.includes("tunai")) return "Tunai";
+  return "Transfer Bank";
+}
+
+function mapPaymentStatus(status: string, paymentStatus?: string | null): { label: string; cls: string } {
+  if (paymentStatus === "paid" || status === "completed") return { label: "Berhasil", cls: "bg-green-100 text-green-700" };
+  if (status === "cancelled") return { label: "Dibatalkan", cls: "bg-red-100 text-red-700" };
+  return { label: "Menunggu", cls: "bg-yellow-100 text-yellow-700" };
 }
 
 export default function PaymentsPage() {
+  const { data, isLoading } = useListOrders({ page: 1, limit: 20 }, AUTH());
+  const orders = data?.data ?? [];
+
+  const totalRevenue = orders
+    .filter((o) => o.status === "completed" || o.paymentStatus === "paid")
+    .reduce((s, o) => s + Number(o.totalAmount ?? 0), 0);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">Pembayaran</h1>
           <p className="text-sm text-gray-500 mt-1">Kelola metode pembayaran dan riwayat transaksi</p>
+        </div>
+
+        {/* Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-sm text-gray-500">Total Transaksi</p>
+            <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-sm text-gray-500">Transaksi Berhasil</p>
+            <p className="text-2xl font-bold text-green-600">
+              {orders.filter((o) => o.status === "completed" || o.paymentStatus === "paid").length}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-sm text-gray-500">Total Pendapatan</p>
+            <p className="text-lg font-bold text-gray-900">{formatIDR(totalRevenue)}</p>
+          </div>
         </div>
 
         {/* Payment Methods */}
@@ -89,40 +124,57 @@ export default function PaymentsPage() {
           </div>
         </div>
 
-        {/* Recent Transactions */}
+        {/* Recent Transactions from real orders */}
         <div>
           <h2 className="text-lg font-semibold text-gray-800 mb-3">Transaksi Terbaru</h2>
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left p-4 font-medium text-gray-600">ID</th>
-                    <th className="text-left p-4 font-medium text-gray-600">Pembeli</th>
-                    <th className="text-left p-4 font-medium text-gray-600">Metode</th>
-                    <th className="text-left p-4 font-medium text-gray-600">Jumlah</th>
-                    <th className="text-left p-4 font-medium text-gray-600">Status</th>
-                    <th className="text-left p-4 font-medium text-gray-600">Tanggal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map((t) => (
-                    <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="p-4 font-mono text-xs text-gray-500">{t.id}</td>
-                      <td className="p-4 font-medium text-gray-900">{t.buyer}</td>
-                      <td className="p-4 text-gray-600">{t.method}</td>
-                      <td className="p-4 font-semibold">{formatIDR(t.amount)}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${t.status === "Berhasil" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
-                          {t.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-gray-400 text-xs">{t.date}</td>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10 text-gray-400">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Memuat transaksi...
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="py-10 text-center text-gray-400">
+                <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                <p className="text-sm">Belum ada transaksi</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="text-left p-4 font-medium text-gray-600">ID</th>
+                      <th className="text-left p-4 font-medium text-gray-600">Pembeli</th>
+                      <th className="text-left p-4 font-medium text-gray-600">Metode</th>
+                      <th className="text-left p-4 font-medium text-gray-600">Jumlah</th>
+                      <th className="text-left p-4 font-medium text-gray-600">Status</th>
+                      <th className="text-left p-4 font-medium text-gray-600">Tanggal</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {orders.map((o) => {
+                      const pStatus = mapPaymentStatus(o.status, o.paymentStatus);
+                      return (
+                        <tr key={o.id} className="border-b border-gray-50 hover:bg-gray-50">
+                          <td className="p-4 font-mono text-xs text-gray-500">#{o.id.slice(-8).toUpperCase()}</td>
+                          <td className="p-4 font-medium text-gray-900">{o.buyerName}</td>
+                          <td className="p-4 text-gray-600">{detectMethod(o.notes)}</td>
+                          <td className="p-4 font-semibold">{formatIDR(Number(o.totalAmount))}</td>
+                          <td className="p-4">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${pStatus.cls}`}>
+                              {pStatus.label}
+                            </span>
+                          </td>
+                          <td className="p-4 text-gray-400 text-xs">
+                            {new Date(o.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>

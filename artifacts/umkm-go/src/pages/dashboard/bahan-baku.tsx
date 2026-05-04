@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Search, AlertTriangle, Edit, Trash2, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 interface Bahan {
   id: string;
@@ -40,7 +41,7 @@ function formatIDR(n: number) {
 
 export default function BahanBakuPage() {
   const { toast } = useToast();
-  const [bahans, setBahans] = useState<Bahan[]>(INIT);
+  const [bahans, setBahans] = useLocalStorage<Bahan[]>("umkm_bahan_baku", INIT);
   const [search, setSearch] = useState("");
   const [kategoriFilter, setKategoriFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);

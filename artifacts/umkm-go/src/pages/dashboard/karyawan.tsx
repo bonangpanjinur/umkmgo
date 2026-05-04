@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Plus, Edit, UserCheck, UserX, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 type Role = "kasir" | "dapur" | "gudang" | "kurir" | "manager";
 type StatusKaryawan = "aktif" | "cuti" | "nonaktif";
@@ -67,7 +68,7 @@ const EMPTY: Omit<Karyawan, "id"> = { nama: "", role: "kasir", telepon: "", emai
 
 export default function KaryawanPage() {
   const { toast } = useToast();
-  const [karyawans, setKaryawans] = useState(INIT);
+  const [karyawans, setKaryawans] = useLocalStorage("umkm_karyawan", INIT);
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<Karyawan | null>(null);
   const [form, setForm] = useState<Omit<Karyawan, "id">>(EMPTY);

@@ -1,72 +1,91 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Truck, MapPin, Package, Clock, CheckCircle, Phone, Plus } from "lucide-react";
+import { Truck, MapPin, Package, CheckCircle, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useListOrders, useUpdateOrder } from "@workspace/api-client-react";
+import { getToken } from "@/lib/auth";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useQueryClient } from "@tanstack/react-query";
 
-type StatusKurir = "menunggu" | "dijemput" | "diantar" | "selesai" | "gagal";
+const AUTH = () => ({ request: { headers: { Authorization: `Bearer ${getToken()}` } } });
 
-interface Pengiriman {
-  id: string;
-  orderId: string;
-  pembeli: string;
-  alamat: string;
-  kurir: string;
-  status: StatusKurir;
-  ekspedisi: string;
-  noResi?: string;
-  ongkir: number;
-  waktu: string;
+type StatusKurir = "menunggu" | "diantar" | "selesai";
+
+interface ResiMap {
+  [orderId: string]: { noResi: string; ekspedisi: string };
 }
 
 const STATUS_CONFIG: Record<StatusKurir, { label: string; color: string }> = {
   menunggu: { label: "Menunggu Pickup", color: "bg-yellow-100 text-yellow-700" },
-  dijemput: { label: "Dijemput Kurir", color: "bg-blue-100 text-blue-700" },
-  diantar: { label: "Sedang Diantar", color: "bg-purple-100 text-purple-700" },
+  diantar: { label: "Sedang Diantar", color: "bg-blue-100 text-blue-700" },
   selesai: { label: "Terkirim", color: "bg-green-100 text-green-700" },
-  gagal: { label: "Gagal Kirim", color: "bg-red-100 text-red-700" },
 };
 
 const EKSPEDISI = ["Kurir Internal", "JNE", "J&T Express", "SiCepat", "AnterAja", "Pos Indonesia", "GoSend", "GrabExpress"];
-
-const MOCK: Pengiriman[] = [
-  { id: "1", orderId: "ORD-001", pembeli: "Ibu Sari", alamat: "Jl. Merdeka No. 10, Jakarta Selatan", kurir: "Budi Kurir", status: "diantar", ekspedisi: "Kurir Internal", ongkir: 15000, waktu: "31 Mar 10:30" },
-  { id: "2", orderId: "ORD-002", pembeli: "Bapak Joko", alamat: "Jl. Pahlawan No. 5, Depok", kurir: "", status: "menunggu", ekspedisi: "JNE", noResi: "JNE1234567890", ongkir: 18000, waktu: "31 Mar 11:00" },
-  { id: "3", orderId: "ORD-003", pembeli: "Dewi A.", alamat: "Jl. Sudirman Blok A3, Tangerang", kurir: "Ahmad Kurir", status: "selesai", ekspedisi: "Kurir Internal", ongkir: 12000, waktu: "30 Mar 15:00" },
-];
 
 function formatIDR(n: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
 }
 
+function orderToStatus(apiStatus: string): StatusKurir {
+  if (apiStatus === "shipped") return "diantar";
+  if (apiStatus === "completed") return "selesai";
+  return "menunggu";
+}
+
 export default function KurirPage() {
   const { toast } = useToast();
-  const [pengiriman, setPengiriman] = useState(MOCK);
+  const queryClient = useQueryClient();
   const [showResi, setShowResi] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [noResi, setNoResi] = useState("");
-  const [ekspedisi, setEkspedisi] = useState("JNE");
+  const [ekspedisi, setEkspedisi] = useState("Kurir Internal");
+  const [resiMap, setResiMap] = useLocalStorage<ResiMap>("umkm_kurir_resi", {});
 
-  const updateStatus = (id: string, status: StatusKurir) => {
-    setPengiriman((prev) => prev.map((p) => p.id === id ? { ...p, status } : p));
-    toast({ title: `Status pengiriman diperbarui` });
+  const { data, isLoading, refetch } = useListOrders(
+    { page: 1, limit: 50 },
+    AUTH()
+  );
+
+  const { mutate: updateOrder } = useUpdateOrder({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Status pengiriman diperbarui" });
+        refetch();
+        queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+      },
+      onError: () => toast({ title: "Gagal memperbarui", variant: "destructive" }),
+    },
+  });
+
+  // Show only delivery orders (not dine-in) that are pending/processing/shipped
+  const deliveryOrders = useMemo(() => {
+    const orders = data?.data ?? [];
+    return orders.filter((o) => {
+      const notes = (o.notes ?? "").toLowerCase();
+      const source = (o.source ?? "").toLowerCase();
+      const isDineIn = notes.includes("makan di sini") || notes.startsWith("meja");
+      return !isDineIn && o.status !== "cancelled";
+    });
+  }, [data]);
+
+  const stats = {
+    menunggu: deliveryOrders.filter((o) => o.status === "pending" || o.status === "processing").length,
+    proses: deliveryOrders.filter((o) => o.status === "shipped").length,
+    selesai: deliveryOrders.filter((o) => o.status === "completed").length,
   };
 
   const saveResi = () => {
-    setPengiriman((prev) => prev.map((p) => p.id === selectedId ? { ...p, noResi, ekspedisi, status: "dijemput" } : p));
-    toast({ title: "No. resi disimpan" });
+    if (!selectedId) return;
+    setResiMap((prev) => ({ ...prev, [selectedId]: { noResi, ekspedisi } }));
+    updateOrder({ id: selectedId, data: { status: "shipped" as any } });
     setShowResi(false);
-  };
-
-  const stats = {
-    menunggu: pengiriman.filter((p) => p.status === "menunggu").length,
-    proses: pengiriman.filter((p) => p.status === "dijemput" || p.status === "diantar").length,
-    selesai: pengiriman.filter((p) => p.status === "selesai").length,
+    setNoResi("");
   };
 
   return (
@@ -74,10 +93,9 @@ export default function KurirPage() {
       <div className="space-y-5">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">Kurir & Pengiriman</h1>
-          <p className="text-sm text-gray-500">Kelola pengiriman internal dan resi ekspedisi</p>
+          <p className="text-sm text-gray-500">Kelola pengiriman berdasarkan pesanan aktif</p>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3 md:gap-4">
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-yellow-700">{stats.menunggu}</p>
@@ -85,7 +103,7 @@ export default function KurirPage() {
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-blue-700">{stats.proses}</p>
-            <p className="text-sm text-blue-600">Dalam Proses</p>
+            <p className="text-sm text-blue-600">Dalam Pengiriman</p>
           </div>
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-green-700">{stats.selesai}</p>
@@ -93,71 +111,88 @@ export default function KurirPage() {
           </div>
         </div>
 
-        {/* Pengiriman List */}
-        <div className="space-y-3">
-          {pengiriman.map((p) => (
-            <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="flex items-start justify-between flex-wrap gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="font-bold text-gray-900">{p.orderId}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CONFIG[p.status].color}`}>
-                      {STATUS_CONFIG[p.status].label}
-                    </span>
-                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{p.ekspedisi}</span>
-                  </div>
-                  <p className="font-medium text-gray-800">{p.pembeli}</p>
-                  <div className="flex items-start gap-1 mt-1">
-                    <MapPin className="h-3.5 w-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-gray-500">{p.alamat}</p>
-                  </div>
-                  {p.noResi && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Package className="h-3.5 w-3.5 text-gray-400" />
-                      <span className="text-xs font-mono text-gray-600">Resi: {p.noResi}</span>
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />)}
+          </div>
+        ) : deliveryOrders.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-400">
+            <Truck className="h-10 w-10 mx-auto mb-2 opacity-20" />
+            <p className="text-sm">Belum ada pesanan pengiriman aktif</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {deliveryOrders.map((order) => {
+              const status = orderToStatus(order.status);
+              const resiInfo = resiMap[order.id];
+              const items: any[] = order.items ?? [];
+              return (
+                <div key={order.id} className="bg-white rounded-xl border border-gray-200 p-5">
+                  <div className="flex items-start justify-between flex-wrap gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1 flex-wrap">
+                        <span className="font-bold text-gray-900 font-mono text-sm">#{order.id.slice(-8).toUpperCase()}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CONFIG[status].color}`}>
+                          {STATUS_CONFIG[status].label}
+                        </span>
+                        {resiInfo && (
+                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{resiInfo.ekspedisi}</span>
+                        )}
+                      </div>
+                      <p className="font-medium text-gray-800">{order.buyerName}</p>
+                      {order.buyerPhone && (
+                        <p className="text-sm text-gray-400 mt-0.5">📞 {order.buyerPhone}</p>
+                      )}
+                      {order.notes && (
+                        <div className="flex items-start gap-1 mt-1">
+                          <MapPin className="h-3.5 w-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-gray-500">{order.notes}</p>
+                        </div>
+                      )}
+                      {resiInfo?.noResi && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Package className="h-3.5 w-3.5 text-gray-400" />
+                          <span className="text-xs font-mono text-gray-600">Resi: {resiInfo.noResi}</span>
+                        </div>
+                      )}
+                      {items.length > 0 && (
+                        <p className="text-xs text-gray-400 mt-1">{items.map((i) => `${i.name} x${i.quantity ?? i.qty ?? 1}`).join(", ")}</p>
+                      )}
                     </div>
-                  )}
-                  {p.kurir && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Truck className="h-3.5 w-3.5 text-gray-400" />
-                      <span className="text-xs text-gray-600">Kurir: {p.kurir}</span>
+                    <div className="flex flex-col items-end gap-2">
+                      <p className="font-semibold text-indigo-600">{formatIDR(Number(order.totalAmount))}</p>
+                      <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+                      <div className="flex gap-2">
+                        {(order.status === "pending" || order.status === "processing") && !resiInfo && (
+                          <Button size="sm" variant="outline" onClick={() => { setSelectedId(order.id); setNoResi(""); setShowResi(true); }}>
+                            <Plus className="h-3.5 w-3.5 mr-1" />Input Resi
+                          </Button>
+                        )}
+                        {(order.status === "pending" || order.status === "processing") && (
+                          <Button size="sm" onClick={() => updateOrder({ id: order.id, data: { status: "shipped" as any } })}>
+                            <Truck className="h-3.5 w-3.5 mr-1" />Kirim
+                          </Button>
+                        )}
+                        {order.status === "shipped" && (
+                          <Button size="sm" className="bg-green-500 hover:bg-green-600" onClick={() => updateOrder({ id: order.id, data: { status: "completed" as any } })}>
+                            <CheckCircle className="h-3.5 w-3.5 mr-1" />Selesai
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <p className="font-semibold text-indigo-600">{formatIDR(p.ongkir)}</p>
-                  <p className="text-xs text-gray-400">{p.waktu}</p>
-                  <div className="flex gap-2">
-                    {p.status === "menunggu" && !p.noResi && (
-                      <Button size="sm" variant="outline" onClick={() => { setSelectedId(p.id); setEkspedisi(p.ekspedisi); setNoResi(""); setShowResi(true); }}>
-                        <Plus className="h-3.5 w-3.5 mr-1" />Input Resi
-                      </Button>
-                    )}
-                    {p.status === "menunggu" && (
-                      <Button size="sm" onClick={() => updateStatus(p.id, "diantar")}>
-                        <Truck className="h-3.5 w-3.5 mr-1" />Berangkat
-                      </Button>
-                    )}
-                    {p.status === "diantar" && (
-                      <Button size="sm" className="bg-green-500 hover:bg-green-600" onClick={() => updateStatus(p.id, "selesai")}>
-                        <CheckCircle className="h-3.5 w-3.5 mr-1" />Selesai
-                      </Button>
-                    )}
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
-        {/* Info */}
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-sm text-indigo-800">
           <p className="font-semibold mb-1">Integrasi Kurir Otomatis (Roadmap)</p>
-          <p className="text-indigo-700">Integrasi real-time dengan JNE, J&T, SiCepat via Biteship API tersedia di paket Premium. Saat ini input resi manual.</p>
+          <p className="text-indigo-700">Integrasi real-time dengan JNE, J&T, SiCepat via Biteship API tersedia di paket Premium.</p>
         </div>
       </div>
 
-      {/* Resi Dialog */}
       <Dialog open={showResi} onOpenChange={setShowResi}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -178,7 +213,7 @@ export default function KurirPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowResi(false)}>Batal</Button>
-            <Button disabled={!noResi} onClick={saveResi}>Simpan Resi</Button>
+            <Button disabled={!noResi} onClick={saveResi}>Simpan & Kirim</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

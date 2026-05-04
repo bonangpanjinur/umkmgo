@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BoxesIcon, Plus, Minus, ClipboardList, AlertTriangle, ArrowUpDown, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 function formatIDR(n: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
@@ -48,8 +49,8 @@ const HISTORY: StokHistory[] = [
 
 export default function StokPage() {
   const { toast } = useToast();
-  const [items, setItems] = useState(ITEMS);
-  const [history, setHistory] = useState(HISTORY);
+  const [items, setItems] = useLocalStorage("umkm_stok_items", ITEMS);
+  const [history, setHistory] = useLocalStorage("umkm_stok_history", HISTORY);
   const [showAdj, setShowAdj] = useState(false);
   const [adjItem, setAdjItem] = useState<StokItem | null>(null);
   const [adjType, setAdjType] = useState<"masuk" | "keluar" | "opname">("masuk");
