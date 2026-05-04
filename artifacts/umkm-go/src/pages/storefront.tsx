@@ -1,4 +1,4 @@
-import { useRoute } from "wouter";
+import { useRoute, useSearch } from "wouter";
 import { useGetStoreBySlug } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, MessageCircle, Store as StoreIcon, Loader2, Phone, Star, Clock, Search, SlidersHorizontal, X, Share2, Copy, Check, ExternalLink } from "lucide-react";
@@ -213,6 +213,8 @@ type SortOption = "default" | "price-asc" | "price-desc";
 export default function Storefront() {
   const [, params] = useRoute("/store/:slug");
   const slug = params?.slug || "";
+  const search = useSearch();
+  const tableNumber = new URLSearchParams(search).get("table");
   const [cartOpen, setCartOpen] = useState(false);
   const [cart, setCart] = useState<{ id: string; name: string; price: number; qty: number }[]>([]);
 
@@ -410,8 +412,29 @@ export default function Storefront() {
         </div>
       </div>
 
+      {/* Table Number Banner */}
+      {tableNumber && (
+        <div className="max-w-4xl mx-auto px-4 mt-3 relative z-10">
+          <div
+            className="rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm"
+            style={{ backgroundColor: t.accent + "18", border: `1.5px solid ${t.accent}33` }}
+          >
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-extrabold text-base flex-shrink-0 shadow"
+              style={{ backgroundColor: t.accent }}
+            >
+              {tableNumber}
+            </div>
+            <div>
+              <p className="font-bold text-sm" style={{ color: t.accent }}>Meja {tableNumber}</p>
+              <p className="text-xs text-gray-500">Pesanan Anda akan diantar ke meja ini</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Store Info Strip */}
-      <div className="max-w-4xl mx-auto px-4 -mt-6 relative z-10 mb-6">
+      <div className={`max-w-4xl mx-auto px-4 ${tableNumber ? "mt-3" : "-mt-6"} relative z-10 mb-6`}>
         <div className={`${t.cardBg} rounded-2xl shadow-lg border ${t.cardBorder} p-4`}>
           {store.description && (
             <p className="text-gray-600 text-sm leading-relaxed mb-3">{store.description}</p>

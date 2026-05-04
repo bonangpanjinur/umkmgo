@@ -43,6 +43,7 @@ import SeoPage from "@/pages/dashboard/seo";
 import Settings from "@/pages/dashboard/settings";
 import BillingPage from "@/pages/dashboard/billing";
 import SupportPage from "@/pages/dashboard/support";
+import QRTablesPage from "@/pages/dashboard/qr-tables";
 
 // Admin Pages
 import AdminDashboard from "@/pages/admin/dashboard";
@@ -135,6 +136,7 @@ function Router() {
       <Route path="/dashboard/settings"><AuthRoute component={Settings} /></Route>
       <Route path="/dashboard/billing"><AuthRoute component={BillingPage} /></Route>
       <Route path="/dashboard/support"><AuthRoute component={SupportPage} /></Route>
+      <Route path="/dashboard/qr-tables"><AuthRoute component={QRTablesPage} /></Route>
 
       {/* Admin */}
       <Route path="/admin"><AuthRoute component={AdminDashboard} adminOnly /></Route>

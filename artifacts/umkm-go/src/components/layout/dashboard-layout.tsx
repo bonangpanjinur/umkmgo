@@ -20,6 +20,7 @@ import {
   Utensils,
   BoxesIcon,
   BarChart2,
+  QrCode,
 } from "lucide-react";
 import { useAuth, useLogoutAction } from "@/hooks/use-custom-auth";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ const navSections: NavSection[] = [
   {
     label: "Pengaturan",
     items: [
+      { href: "/dashboard/qr-tables", label: "QR Code Meja", icon: QrCode },
       { href: "/dashboard/templates", label: "Tema Toko", icon: StoreIcon },
       { href: "/dashboard/domains", label: "Domain", icon: Globe },
       { href: "/dashboard/seo", label: "SEO", icon: Globe },
