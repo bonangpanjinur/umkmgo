@@ -1,37 +1,102 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
-import { ChefHat, Clock, CheckCircle, RefreshCw, Loader2 } from "lucide-react";
+import {
+  ChefHat,
+  Clock,
+  CheckCircle2,
+  RefreshCw,
+  Loader2,
+  QrCode,
+  ShoppingCart,
+  Truck,
+  Utensils,
+  Bell,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useListOrders, useUpdateOrder } from "@workspace/api-client-react";
 import { getToken } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 
-const AUTH = () => ({ request: { headers: { Authorization: `Bearer ${getToken()}` } } });
+const AUTH = () => ({
+  request: { headers: { Authorization: `Bearer ${getToken()}` } },
+});
+
+const POLL_INTERVAL = 10_000;
+const WARN_MINS = 10;
+const LATE_MINS = 15;
 
 type KDSStatus = "new" | "preparing" | "ready";
 
 interface KDSOrder {
   id: string;
-  table: string;
-  type: string;
-  items: { name: string; qty: number; notes?: string }[];
+  tableNumber: string | null;
+  source: string | null;
+  buyerName: string;
+  items: { name: string; quantity: number; qty?: number; notes?: string }[];
   status: KDSStatus;
   time: Date;
-  apiStatus: string;
+  notes: string | null;
 }
 
-const STATUS_CONFIG: Record<KDSStatus, {
-  label: string;
-  color: string;
-  bg: string;
-  next: KDSStatus | null;
-  nextLabel: string;
-  nextApiStatus: string;
-}> = {
-  new: { label: "Pesanan Baru", color: "text-red-700", bg: "bg-red-50 border-red-300", next: "preparing", nextLabel: "Mulai Buat", nextApiStatus: "processing" },
-  preparing: { label: "Sedang Dibuat", color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-300", next: "ready", nextLabel: "Siap Disajikan", nextApiStatus: "shipped" },
-  ready: { label: "Siap Disajikan", color: "text-green-700", bg: "bg-green-50 border-green-300", next: null, nextLabel: "", nextApiStatus: "" },
+const COLUMN_CONFIG: Record<
+  KDSStatus,
+  {
+    label: string;
+    icon: any;
+    headerBg: string;
+    cardBg: string;
+    cardBorder: string;
+    badgeColor: string;
+    badgeBg: string;
+    actionLabel: string;
+    actionClass: string;
+    nextStatus: KDSStatus | null;
+    nextApiStatus: string;
+  }
+> = {
+  new: {
+    label: "Pesanan Baru",
+    icon: Bell,
+    headerBg: "bg-red-500",
+    cardBg: "bg-red-50",
+    cardBorder: "border-red-200",
+    badgeColor: "text-red-700",
+    badgeBg: "bg-red-100",
+    actionLabel: "Mulai Masak",
+    actionClass: "bg-amber-500 hover:bg-amber-600 text-white",
+    nextStatus: "preparing",
+    nextApiStatus: "processing",
+  },
+  preparing: {
+    label: "Sedang Dimasak",
+    icon: ChefHat,
+    headerBg: "bg-amber-500",
+    cardBg: "bg-amber-50",
+    cardBorder: "border-amber-200",
+    badgeColor: "text-amber-700",
+    badgeBg: "bg-amber-100",
+    actionLabel: "Siap Antar",
+    actionClass: "bg-green-500 hover:bg-green-600 text-white",
+    nextStatus: "ready",
+    nextApiStatus: "shipped",
+  },
+  ready: {
+    label: "Siap Disajikan",
+    icon: CheckCircle2,
+    headerBg: "bg-green-500",
+    cardBg: "bg-green-50",
+    cardBorder: "border-green-200",
+    badgeColor: "text-green-700",
+    badgeBg: "bg-green-100",
+    actionLabel: "Selesai",
+    actionClass: "bg-gray-700 hover:bg-gray-800 text-white",
+    nextStatus: null,
+    nextApiStatus: "completed",
+  },
 };
 
 function apiStatusToKDS(status: string): KDSStatus {
@@ -40,105 +105,305 @@ function apiStatusToKDS(status: string): KDSStatus {
   return "new";
 }
 
-function elapsedTime(date: Date) {
-  const mins = Math.floor((Date.now() - date.getTime()) / 60000);
-  if (mins < 1) return "Baru saja";
-  if (mins < 60) return `${mins} menit lalu`;
-  return `${Math.floor(mins / 60)} jam lalu`;
-}
-
-function parseItems(items: any): { name: string; qty: number; notes?: string }[] {
+function parseItems(items: any) {
   if (!items) return [];
   if (Array.isArray(items)) return items;
-  try { return JSON.parse(items); } catch { return []; }
-}
-
-function parseNotes(notes?: string | null): string {
-  return notes || "";
-}
-
-function getTableFromNotes(notes?: string | null, source?: string | null): string {
-  if (notes?.includes("Meja:")) {
-    const match = notes.match(/Meja:\s*([^\s|]+)/);
-    if (match) return match[1];
+  try {
+    return JSON.parse(items);
+  } catch {
+    return [];
   }
+}
+
+function getSourceLabel(source: string | null, tableNumber: string | null) {
+  if (source === "qr_table" || tableNumber) return "QR Meja";
   if (source === "pos") return "Kasir";
-  return "Online";
+  if (source === "storefront") return "Online";
+  if (source === "whatsapp") return "WhatsApp";
+  return "Manual";
 }
 
-function getTypeFromNotes(notes?: string | null): string {
-  if (notes?.toLowerCase().includes("makan di sini") || notes?.includes("Meja:")) return "Dine-in";
-  if (notes?.toLowerCase().includes("bawa pulang")) return "Bawa Pulang";
-  if (notes?.toLowerCase().includes("antar")) return "Delivery";
-  return "—";
+function getSourceIcon(source: string | null, tableNumber: string | null) {
+  if (source === "qr_table" || tableNumber) return QrCode;
+  if (source === "pos") return ShoppingCart;
+  if (source === "whatsapp" || source === "storefront") return Truck;
+  return Utensils;
 }
 
-function OrderCard({ order, onStatusChange, isUpdating }: {
-  order: KDSOrder;
-  onStatusChange: (id: string, kdsStatus: KDSStatus, apiStatus: string) => void;
-  isUpdating: boolean;
-}) {
-  const [elapsed, setElapsed] = useState(elapsedTime(order.time));
-  const cfg = STATUS_CONFIG[order.status];
-  const mins = Math.floor((Date.now() - order.time.getTime()) / 60000);
-  const isLate = mins > 15;
+function ElapsedTimer({ time }: { time: Date }) {
+  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setElapsed(elapsedTime(order.time)), 30000);
+    const update = () =>
+      setElapsed(Math.floor((Date.now() - time.getTime()) / 1000));
+    update();
+    const t = setInterval(update, 1000);
     return () => clearInterval(t);
-  }, [order.time]);
+  }, [time]);
+
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  const isWarn = mins >= WARN_MINS;
+  const isLate = mins >= LATE_MINS;
+
+  const label =
+    mins === 0
+      ? `${secs}d`
+      : `${mins}m ${secs.toString().padStart(2, "0")}d`;
 
   return (
-    <div className={`rounded-2xl border-2 p-4 ${cfg.bg} ${isLate && order.status !== "ready" ? "ring-2 ring-red-400 ring-offset-2" : ""}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-black text-gray-900">{order.table}</span>
-            <span className="text-xs text-gray-500 font-medium">{order.type}</span>
+    <span
+      className={`text-xs font-mono font-bold tabular-nums ${
+        isLate
+          ? "text-red-600"
+          : isWarn
+          ? "text-amber-600"
+          : "text-gray-400"
+      }`}
+    >
+      {label}
+      {isLate ? " ⚠️" : ""}
+    </span>
+  );
+}
+
+function CountdownBar({ interval, lastRefresh }: { interval: number; lastRefresh: number }) {
+  const [progress, setProgress] = useState(100);
+
+  useEffect(() => {
+    const update = () => {
+      const elapsed = Date.now() - lastRefresh;
+      const pct = Math.max(0, 100 - (elapsed / interval) * 100);
+      setProgress(pct);
+    };
+    update();
+    const t = setInterval(update, 200);
+    return () => clearInterval(t);
+  }, [interval, lastRefresh]);
+
+  return (
+    <div className="h-1 bg-gray-100 rounded-full overflow-hidden w-32">
+      <div
+        className="h-full bg-primary transition-all duration-200 rounded-full"
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  );
+}
+
+function OrderCard({
+  order,
+  onAction,
+  isUpdating,
+  isFullscreen,
+}: {
+  order: KDSOrder;
+  onAction: (id: string, nextApiStatus: string) => void;
+  isUpdating: boolean;
+  isFullscreen: boolean;
+}) {
+  const cfg = COLUMN_CONFIG[order.status];
+  const mins = Math.floor((Date.now() - order.time.getTime()) / 60000);
+  const isLate = mins >= LATE_MINS && order.status !== "ready";
+  const SourceIcon = getSourceIcon(order.source, order.tableNumber);
+  const sourceLabel = getSourceLabel(order.source, order.tableNumber);
+  const isQR = order.source === "qr_table" || !!order.tableNumber;
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.92, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.88, y: -12 }}
+      transition={{ duration: 0.22 }}
+      className={`rounded-2xl border-2 ${cfg.cardBg} ${cfg.cardBorder} ${
+        isLate ? "ring-2 ring-red-400 ring-offset-2 animate-pulse" : ""
+      } overflow-hidden`}
+    >
+      {/* Card header */}
+      <div className={`px-4 pt-4 pb-3 ${isFullscreen ? "px-5 pt-5" : ""}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            {/* Table / source */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {order.tableNumber ? (
+                <span className={`text-2xl font-black text-gray-900 ${isFullscreen ? "text-3xl" : ""}`}>
+                  Meja {order.tableNumber}
+                </span>
+              ) : (
+                <span className={`text-lg font-bold text-gray-700 ${isFullscreen ? "text-xl" : ""}`}>
+                  {sourceLabel}
+                </span>
+              )}
+              <span
+                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  isQR
+                    ? "bg-indigo-100 text-indigo-700"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                <SourceIcon className="w-3 h-3" />
+                {sourceLabel}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 truncate mt-0.5">
+              {order.buyerName}
+            </p>
+            <p className="text-[10px] text-gray-400 font-mono mt-0.5">
+              #{order.id.slice(-6).toUpperCase()}
+            </p>
           </div>
-          <div className="flex items-center gap-1 mt-0.5">
-            <Clock className={`h-3 w-3 ${isLate ? "text-red-500" : "text-gray-400"}`} />
-            <span className={`text-xs ${isLate && order.status !== "ready" ? "text-red-600 font-semibold" : "text-gray-400"}`}>
-              {elapsed} {isLate && order.status !== "ready" ? "⚠️" : ""}
-            </span>
+
+          {/* Timer */}
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <div className="flex items-center gap-1">
+              <Clock className={`w-3 h-3 ${isLate ? "text-red-500" : "text-gray-400"}`} />
+              <ElapsedTimer time={order.time} />
+            </div>
           </div>
-          <p className="text-xs text-gray-400 mt-0.5 font-mono">#{order.id.slice(-6).toUpperCase()}</p>
         </div>
-        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${cfg.color} ${order.status === "new" ? "bg-red-100" : order.status === "preparing" ? "bg-yellow-100" : "bg-green-100"}`}>
-          {cfg.label}
+      </div>
+
+      {/* Divider */}
+      <div className={`mx-4 border-t ${cfg.cardBorder}`} />
+
+      {/* Items */}
+      <div className={`px-4 py-3 space-y-2 ${isFullscreen ? "px-5 py-4 space-y-2.5" : ""}`}>
+        {order.items.map((item, i) => {
+          const qty = item.quantity ?? item.qty ?? 1;
+          return (
+            <div
+              key={i}
+              className="flex items-start justify-between gap-3 bg-white/70 rounded-xl px-3 py-2"
+            >
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold text-gray-900 leading-tight ${isFullscreen ? "text-base" : "text-sm"}`}>
+                  {item.name}
+                </p>
+                {item.notes && (
+                  <p className="text-xs text-orange-600 mt-0.5">
+                    📝 {item.notes}
+                  </p>
+                )}
+              </div>
+              <span
+                className={`flex-shrink-0 font-black text-white rounded-full flex items-center justify-center ${
+                  isFullscreen
+                    ? "w-8 h-8 text-base bg-gray-800"
+                    : "w-6 h-6 text-xs bg-gray-800"
+                }`}
+              >
+                {qty}
+              </span>
+            </div>
+          );
+        })}
+
+        {order.notes && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+            <p className="text-xs text-orange-700 font-medium">
+              📋 {order.notes}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Action button */}
+      <div className={`px-4 pb-4 ${isFullscreen ? "px-5 pb-5" : ""}`}>
+        {order.status === "ready" ? (
+          <button
+            onClick={() => onAction(order.id, cfg.nextApiStatus)}
+            disabled={isUpdating}
+            className={`w-full ${isFullscreen ? "py-3 text-base" : "py-2.5 text-sm"} rounded-xl font-bold transition-colors flex items-center justify-center gap-2 ${cfg.actionClass}`}
+          >
+            {isUpdating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )}
+            Tandai Selesai
+          </button>
+        ) : (
+          <button
+            onClick={() => onAction(order.id, cfg.nextApiStatus)}
+            disabled={isUpdating}
+            className={`w-full ${isFullscreen ? "py-3 text-base" : "py-2.5 text-sm"} rounded-xl font-bold transition-colors flex items-center justify-center gap-2 ${cfg.actionClass}`}
+          >
+            {isUpdating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : cfg.nextStatus === "preparing" ? (
+              <ChefHat className="w-4 h-4" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )}
+            {cfg.actionLabel}
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function KDSColumn({
+  status,
+  orders,
+  onAction,
+  updatingId,
+  isFullscreen,
+}: {
+  status: KDSStatus;
+  orders: KDSOrder[];
+  onAction: (id: string, nextApiStatus: string) => void;
+  updatingId: string | null;
+  isFullscreen: boolean;
+}) {
+  const cfg = COLUMN_CONFIG[status];
+  const Icon = cfg.icon;
+
+  return (
+    <div className="flex flex-col min-h-0">
+      {/* Column header */}
+      <div
+        className={`${cfg.headerBg} text-white rounded-t-2xl px-4 py-3 flex items-center justify-between`}
+      >
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4" />
+          <span className="font-bold text-sm">{cfg.label}</span>
+        </div>
+        <span className="bg-white/20 text-white text-xs font-black w-6 h-6 rounded-full flex items-center justify-center">
+          {orders.length}
         </span>
       </div>
 
-      <div className="space-y-2 mb-4">
-        {order.items.map((item, i) => (
-          <div key={i} className="bg-white/70 rounded-lg px-3 py-2">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-gray-900">{item.name}</span>
-              <span className="bg-gray-900 text-white text-xs font-bold px-2 py-0.5 rounded-full">×{item.qty}</span>
-            </div>
-            {item.notes && (
-              <p className="text-xs text-orange-600 mt-0.5 font-medium">📝 {item.notes}</p>
-            )}
-          </div>
-        ))}
+      {/* Cards */}
+      <div
+        className={`flex-1 bg-gray-100/60 rounded-b-2xl p-3 space-y-3 overflow-y-auto ${
+          isFullscreen ? "min-h-[calc(100vh-200px)]" : "min-h-[240px] max-h-[calc(100vh-260px)]"
+        }`}
+      >
+        <AnimatePresence mode="popLayout">
+          {orders.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-12 text-gray-300"
+            >
+              <Icon className="w-10 h-10 mb-2" />
+              <p className="text-xs font-medium">Tidak ada pesanan</p>
+            </motion.div>
+          ) : (
+            orders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onAction={onAction}
+                isUpdating={updatingId === order.id}
+                isFullscreen={isFullscreen}
+              />
+            ))
+          )}
+        </AnimatePresence>
       </div>
-
-      {cfg.next && (
-        <Button
-          className={`w-full font-bold ${order.status === "new" ? "bg-yellow-500 hover:bg-yellow-600 text-white" : "bg-green-500 hover:bg-green-600 text-white"}`}
-          onClick={() => onStatusChange(order.id, cfg.next!, cfg.nextApiStatus)}
-          disabled={isUpdating}
-        >
-          {isUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ChefHat className="h-4 w-4 mr-2" />}
-          {cfg.nextLabel}
-        </Button>
-      )}
-      {order.status === "ready" && (
-        <div className="flex items-center justify-center gap-2 py-2 text-green-600">
-          <CheckCircle className="h-5 w-5" />
-          <span className="font-bold">Siap Disajikan!</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -146,124 +411,196 @@ function OrderCard({ order, onStatusChange, isUpdating }: {
 export default function KDSPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<"all" | KDSStatus>("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const lastRefreshRef = useRef(Date.now());
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
 
   const { data, isLoading, refetch } = useListOrders(
-    { limit: 50 },
-    { request: AUTH().request, query: { refetchInterval: 15000, queryKey: ["/api/orders", "kds"] } }
+    { limit: 100 },
+    {
+      request: AUTH().request,
+      query: {
+        refetchInterval: POLL_INTERVAL,
+        queryKey: ["/api/orders", "kds"],
+        refetchIntervalInBackground: false,
+        staleTime: 5000,
+      },
+    }
   );
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      lastRefreshRef.current = Date.now();
+      setLastRefresh(Date.now());
+    }, POLL_INTERVAL);
+    return () => clearInterval(t);
+  }, []);
 
   const updateOrderMutation = useUpdateOrder(AUTH());
 
-  const allOrders = (data?.data ?? [])
-    .filter((o) => ["pending", "processing", "shipped"].includes(o.status))
-    .map((o): KDSOrder => ({
+  const allOrders: KDSOrder[] = (data?.data ?? [])
+    .filter((o) =>
+      ["pending", "processing", "shipped"].includes(o.status)
+    )
+    .map((o) => ({
       id: o.id,
-      table: getTableFromNotes(o.notes, o.source),
-      type: getTypeFromNotes(o.notes),
+      tableNumber: (o as any).tableNumber ?? null,
+      source: (o as any).source ?? null,
+      buyerName: o.buyerName,
       items: parseItems(o.items),
       status: apiStatusToKDS(o.status),
       time: new Date(o.createdAt),
-      apiStatus: o.status,
+      notes: o.notes ?? null,
     }))
     .sort((a, b) => a.time.getTime() - b.time.getTime());
 
-  const handleStatusChange = async (id: string, kdsStatus: KDSStatus, apiStatus: string) => {
-    setUpdatingId(id);
-    try {
-      await updateOrderMutation.mutateAsync({ id, data: { status: apiStatus as any } });
-      queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-      const labels: Record<KDSStatus, string> = { new: "Baru", preparing: "Diproses", ready: "Siap Disajikan" };
-      toast({ title: `✅ Pesanan diperbarui ke: ${labels[kdsStatus]}` });
-    } catch {
-      toast({ title: "Gagal memperbarui pesanan", variant: "destructive" });
-    } finally {
-      setUpdatingId(null);
-    }
+  const byStatus: Record<KDSStatus, KDSOrder[]> = {
+    new: allOrders.filter((o) => o.status === "new"),
+    preparing: allOrders.filter((o) => o.status === "preparing"),
+    ready: allOrders.filter((o) => o.status === "ready"),
   };
 
-  const counts = {
-    new: allOrders.filter((o) => o.status === "new").length,
-    preparing: allOrders.filter((o) => o.status === "preparing").length,
-    ready: allOrders.filter((o) => o.status === "ready").length,
-  };
+  const handleAction = useCallback(
+    async (id: string, nextApiStatus: string) => {
+      setUpdatingId(id);
+      try {
+        await updateOrderMutation.mutateAsync({
+          id,
+          data: { status: nextApiStatus as any },
+        });
+        await queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
 
-  const visible = filter === "all" ? allOrders : allOrders.filter((o) => o.status === filter);
+        const label =
+          nextApiStatus === "processing"
+            ? "Sedang dimasak"
+            : nextApiStatus === "shipped"
+            ? "Siap disajikan"
+            : "Selesai";
+        toast({ title: `✅ ${label}` });
+      } catch {
+        toast({
+          title: "Gagal memperbarui pesanan",
+          variant: "destructive",
+        });
+      } finally {
+        setUpdatingId(null);
+      }
+    },
+    [updateOrderMutation, queryClient, toast]
+  );
+
+  const handleRefresh = useCallback(() => {
+    refetch();
+    setLastRefresh(Date.now());
+  }, [refetch]);
+
+  const totalActive = allOrders.length;
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
+      <div className={`space-y-4 ${isFullscreen ? "fixed inset-0 z-50 bg-gray-100 p-4 overflow-auto" : ""}`}>
+        {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Dapur (KDS)</h1>
-            <p className="text-sm text-gray-500">Kitchen Display System — antrian pesanan real-time</p>
+            <div className="flex items-center gap-2">
+              <h1 className={`font-bold text-gray-900 ${isFullscreen ? "text-3xl" : "text-xl md:text-2xl"}`}>
+                Dapur (KDS)
+              </h1>
+              {totalActive > 0 && (
+                <span className="bg-red-500 text-white text-xs font-black px-2 py-0.5 rounded-full">
+                  {totalActive} aktif
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-500">
+              Kitchen Display System — antrian pesanan real-time
+            </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isLoading}
-          >
-            {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Refresh
-          </Button>
-        </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Pesanan Baru", count: counts.new, color: "bg-red-100 text-red-700 border-red-200", status: "new" as KDSStatus },
-            { label: "Sedang Dibuat", count: counts.preparing, color: "bg-yellow-100 text-yellow-700 border-yellow-200", status: "preparing" as KDSStatus },
-            { label: "Siap Saji", count: counts.ready, color: "bg-green-100 text-green-700 border-green-200", status: "ready" as KDSStatus },
-          ].map((s) => (
-            <button
-              key={s.status}
-              onClick={() => setFilter(filter === s.status ? "all" : s.status)}
-              className={`p-4 rounded-xl border-2 text-center font-semibold transition-all ${s.color} ${filter === s.status ? "ring-2 ring-offset-1 ring-current" : ""}`}
+          <div className="flex items-center gap-2">
+            {/* Countdown bar */}
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <CountdownBar interval={POLL_INTERVAL} lastRefresh={lastRefresh} />
+              <span>auto-refresh</span>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
             >
-              <p className="text-3xl font-black">{s.count}</p>
-              <p className="text-xs mt-1">{s.label}</p>
-            </button>
-          ))}
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              title={isFullscreen ? "Keluar layar penuh" : "Layar penuh (untuk monitor dapur)"}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Loading */}
-        {isLoading && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <Loader2 className="h-12 w-12 text-gray-300 mx-auto mb-4 animate-spin" />
-            <p className="text-gray-400">Memuat pesanan...</p>
+        {isLoading && allOrders.length === 0 ? (
+          <div className="flex items-center justify-center py-32">
+            <div className="text-center">
+              <Loader2 className="h-12 w-12 text-gray-300 mx-auto mb-4 animate-spin" />
+              <p className="text-gray-400">Memuat pesanan...</p>
+            </div>
           </div>
-        )}
-
-        {/* Order Grid */}
-        {!isLoading && visible.length === 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <ChefHat className="h-16 w-16 text-gray-200 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg font-medium">
-              {allOrders.length === 0 ? "Belum ada pesanan masuk" : "Tidak ada pesanan dengan filter ini"}
-            </p>
-            <p className="text-gray-300 text-sm mt-1">Pesanan baru dari kasir akan muncul di sini secara otomatis</p>
-          </div>
-        )}
-
-        {!isLoading && visible.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {visible.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                onStatusChange={handleStatusChange}
-                isUpdating={updatingId === order.id}
+        ) : (
+          /* Kanban columns */
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {(["new", "preparing", "ready"] as KDSStatus[]).map((status) => (
+              <KDSColumn
+                key={status}
+                status={status}
+                orders={byStatus[status]}
+                onAction={handleAction}
+                updatingId={updatingId}
+                isFullscreen={isFullscreen}
               />
             ))}
           </div>
         )}
 
-        {/* Auto-refresh notice */}
-        <p className="text-xs text-gray-400 text-center">
-          Halaman otomatis diperbarui setiap 15 detik
-        </p>
+        {/* Empty state */}
+        {!isLoading && totalActive === 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
+            <ChefHat className="h-16 w-16 text-gray-200 mx-auto mb-4" />
+            <p className="text-gray-400 text-lg font-semibold">
+              Dapur bersih!
+            </p>
+            <p className="text-gray-300 text-sm mt-1">
+              Pesanan baru akan muncul otomatis di sini
+            </p>
+          </div>
+        )}
+
+        {!isFullscreen && (
+          <p className="text-xs text-gray-400 text-center pb-2">
+            Diperbarui otomatis setiap {POLL_INTERVAL / 1000} detik ·{" "}
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className="underline underline-offset-2 hover:text-gray-600"
+            >
+              Buka layar penuh untuk monitor dapur
+            </button>
+          </p>
+        )}
       </div>
     </DashboardLayout>
   );
