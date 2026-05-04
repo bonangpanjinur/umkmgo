@@ -56,7 +56,7 @@ router.post("/orders", requireAuth, async (req, res) => {
     const store = await getStoreForUser(userId);
     if (!store) { res.status(404).json({ error: "Store not found" }); return; }
 
-    const { buyerName, buyerPhone, buyerAddress, items, totalAmount, notes, source } = req.body;
+    const { buyerName, buyerPhone, buyerAddress, tableNumber, items, totalAmount, notes, source } = req.body;
     if (!buyerName || !buyerPhone || !items || totalAmount === undefined) {
       res.status(400).json({ error: "Validation error", message: "Required: buyerName, buyerPhone, items, totalAmount" });
       return;
@@ -67,6 +67,7 @@ router.post("/orders", requireAuth, async (req, res) => {
       buyerName,
       buyerPhone,
       buyerAddress,
+      tableNumber: tableNumber || null,
       items: JSON.stringify(items),
       totalAmount,
       notes,
@@ -81,6 +82,45 @@ router.post("/orders", requireAuth, async (req, res) => {
     res.status(201).json({ ...order, items: JSON.parse(order.items) });
   } catch (err) {
     req.log.error({ err }, "Create order error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Public endpoint — buyer places order directly from storefront (no auth)
+router.post("/stores/:slug/orders", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const [store] = await db.select().from(storesTable).where(eq(storesTable.slug, slug)).limit(1);
+    if (!store) { res.status(404).json({ error: "Store not found" }); return; }
+
+    const { buyerName, buyerPhone, tableNumber, items, totalAmount, notes } = req.body;
+    if (!buyerName || !buyerPhone || !items || !Array.isArray(items) || items.length === 0 || totalAmount === undefined) {
+      res.status(400).json({ error: "Validation error", message: "Required: buyerName, buyerPhone, items, totalAmount" });
+      return;
+    }
+
+    const [order] = await db.insert(ordersTable).values({
+      storeId: store.id,
+      buyerName,
+      buyerPhone,
+      tableNumber: tableNumber || null,
+      items: JSON.stringify(items),
+      totalAmount,
+      notes: notes || null,
+      source: tableNumber ? "qr_table" : "storefront",
+      status: "pending",
+      paymentStatus: "pending",
+    }).returning();
+
+    await upsertCustomer(store.id, buyerName, buyerPhone, totalAmount);
+    await db.update(storesTable).set({
+      orderCount: sql`${storesTable.orderCount} + 1`,
+      revenue: sql`${storesTable.revenue} + ${Math.round(totalAmount)}`,
+    }).where(eq(storesTable.id, store.id));
+
+    res.status(201).json({ ...order, items: JSON.parse(order.items) });
+  } catch (err) {
+    (req as any).log?.error({ err }, "Public create order error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

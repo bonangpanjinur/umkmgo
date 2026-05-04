@@ -153,6 +153,17 @@ All routes prefixed with `/api`:
 - `/admin/logs` - Audit logs
 - `/admin/flags` - Feature flags
 
+## QR Code Table Ordering
+
+Fitur pemesanan langsung dari meja via QR code:
+
+- Owner generate QR per meja di `/dashboard/qr-tables` (pilih jumlah meja, download atau cetak semua)
+- QR mengarah ke `/store/:slug?table=N` — nomor meja terdeteksi otomatis
+- Pembeli pilih menu → tambah ke keranjang → checkout form (nama + HP) → pesanan masuk ke dashboard owner
+- Pesanan dari QR meja disimpan dengan `source: "qr_table"` dan `tableNumber`
+- Endpoint publik tanpa auth: `POST /api/stores/:slug/orders`
+- Dashboard orders menampilkan kolom Meja dan badge sumber (QR Meja / Online / WhatsApp / Manual)
+
 ## Running Locally
 
 ```bash

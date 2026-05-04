@@ -1,7 +1,7 @@
 import { useRoute, useSearch } from "wouter";
 import { useGetStoreBySlug } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, MessageCircle, Store as StoreIcon, Loader2, Phone, Star, Clock, Search, SlidersHorizontal, X, Share2, Copy, Check, ExternalLink } from "lucide-react";
+import { ShoppingBag, MessageCircle, Store as StoreIcon, Loader2, Phone, Star, Clock, Search, SlidersHorizontal, X, Share2, Copy, Check, ExternalLink, QrCode, ChevronRight, Minus, Plus, Trash2, User, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useMemo, useCallback } from "react";
 
@@ -210,13 +210,317 @@ function formatIDR(num: number) {
 
 type SortOption = "default" | "price-asc" | "price-desc";
 
+type CartItem = { id: string; name: string; price: number; qty: number };
+
+type CheckoutStep = "cart" | "form" | "success";
+
+interface CheckoutModalProps {
+  cart: CartItem[];
+  cartTotal: number;
+  slug: string;
+  storeName: string;
+  tableNumber: string | null;
+  whatsapp: string | null | undefined;
+  theme: ThemeConfig;
+  onClose: () => void;
+  onQtyChange: (id: string, delta: number) => void;
+  onRemove: (id: string) => void;
+}
+
+function CheckoutModal({
+  cart,
+  cartTotal,
+  slug,
+  storeName,
+  tableNumber,
+  whatsapp,
+  theme: t,
+  onClose,
+  onQtyChange,
+  onRemove,
+}: CheckoutModalProps) {
+  const [step, setStep] = useState<CheckoutStep>("cart");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [orderId, setOrderId] = useState("");
+
+  const submitOrder = async () => {
+    if (!name.trim()) { setError("Nama wajib diisi"); return; }
+    if (!phone.trim()) { setError("Nomor HP wajib diisi"); return; }
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/stores/${slug}/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          buyerName: name.trim(),
+          buyerPhone: phone.trim(),
+          tableNumber: tableNumber || undefined,
+          items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, quantity: c.qty })),
+          totalAmount: cartTotal,
+          notes: notes.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.message || "Gagal mengirim pesanan");
+        return;
+      }
+      const data = await res.json();
+      setOrderId(data.id);
+      setStep("success");
+    } catch {
+      setError("Gagal terhubung ke server, coba lagi");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const orderViaWhatsApp = () => {
+    if (!whatsapp) return;
+    const wa = whatsapp.startsWith("0") ? "62" + whatsapp.slice(1) : whatsapp;
+    const items = cart.map((c) => `• ${c.name} x${c.qty} = ${formatIDR(c.price * c.qty)}`).join("\n");
+    const tableInfo = tableNumber ? `\n🪑 *Meja ${tableNumber}*` : "";
+    const text = encodeURIComponent(
+      `Halo ${storeName}! 👋${tableInfo}\n\nSaya ingin memesan:\n${items}\n\n*Total: ${formatIDR(cartTotal)}*\n\nMohon konfirmasinya 🙏`
+    );
+    window.open(`https://wa.me/${wa}?text=${text}`, "_blank");
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={step !== "success" ? onClose : undefined} />
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+      >
+        {/* Header */}
+        {step !== "success" && (
+          <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              {step === "form" && (
+                <button onClick={() => setStep("cart")} className="text-gray-400 hover:text-gray-600 mr-1">
+                  <ChevronRight className="w-5 h-5 rotate-180" />
+                </button>
+              )}
+              <h2 className="text-lg font-bold text-gray-900">
+                {step === "cart" ? "Keranjang Pesanan" : "Data Pemesan"}
+              </h2>
+              {tableNumber && (
+                <span
+                  className="px-2 py-0.5 rounded-full text-xs font-bold text-white"
+                  style={{ backgroundColor: t.accent }}
+                >
+                  Meja {tableNumber}
+                </span>
+              )}
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
+        )}
+
+        {/* Step: Cart */}
+        {step === "cart" && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
+              {cart.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-gray-900 truncate">{item.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{formatIDR(item.price)} / item</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => onQtyChange(item.id, -1)}
+                      className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:border-gray-400 transition-colors"
+                    >
+                      <Minus className="w-3 h-3 text-gray-600" />
+                    </button>
+                    <span className="w-6 text-center text-sm font-bold text-gray-900">{item.qty}</span>
+                    <button
+                      onClick={() => onQtyChange(item.id, 1)}
+                      className="w-7 h-7 rounded-full text-white flex items-center justify-center transition-colors"
+                      style={{ backgroundColor: t.accent }}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="text-right flex-shrink-0 min-w-[64px]">
+                    <p className="text-sm font-bold text-gray-900">{formatIDR(item.price * item.qty)}</p>
+                  </div>
+                  <button onClick={() => onRemove(item.id)} className="text-gray-300 hover:text-red-400 transition-colors ml-1">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="px-5 pb-5 pt-3 border-t border-gray-100 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 font-medium">Total</span>
+                <span className="text-xl font-extrabold" style={{ color: t.accent }}>{formatIDR(cartTotal)}</span>
+              </div>
+              <button
+                onClick={() => setStep("form")}
+                className="w-full py-3.5 rounded-2xl text-white font-bold text-base transition-all active:scale-[0.98] shadow-lg"
+                style={{ backgroundColor: t.accent }}
+              >
+                Pesan Sekarang →
+              </button>
+              {whatsapp && (
+                <button
+                  onClick={orderViaWhatsApp}
+                  className="w-full py-3 rounded-2xl font-semibold text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 border-2"
+                  style={{ color: t.accent, borderColor: t.accent + "40" }}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Pesan via WhatsApp
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Step: Form */}
+        {step === "form" && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {/* Order summary */}
+              <div className="rounded-2xl p-3 space-y-1.5" style={{ backgroundColor: t.accent + "0f" }}>
+                {cart.map((item) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span className="text-gray-700">{item.name} ×{item.qty}</span>
+                    <span className="font-semibold text-gray-900">{formatIDR(item.price * item.qty)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-sm font-bold pt-1.5 border-t border-gray-200 mt-1">
+                  <span style={{ color: t.accent }}>Total</span>
+                  <span style={{ color: t.accent }}>{formatIDR(cartTotal)}</span>
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Nama Pemesan *</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Nama kamu"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-9 pr-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none focus:border-current transition-colors"
+                    style={{ "--tw-ring-color": t.accent } as any}
+                    onFocus={(e) => e.target.style.borderColor = t.accent}
+                    onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                  />
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Nomor HP *</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="tel"
+                    placeholder="08xxxxxxxxxx"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full pl-9 pr-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none transition-colors"
+                    onFocus={(e) => e.target.style.borderColor = t.accent}
+                    onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="text-sm font-semibold text-gray-700 mb-1.5 block">Catatan <span className="text-gray-400 font-normal">(opsional)</span></label>
+                <textarea
+                  placeholder="Contoh: tidak pakai pedas, es terpisah..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm focus:outline-none transition-colors resize-none"
+                  onFocus={(e) => e.target.style.borderColor = t.accent}
+                  onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
+                />
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-sm text-red-600">
+                  {error}
+                </div>
+              )}
+            </div>
+            <div className="px-5 pb-5 pt-3 border-t border-gray-100">
+              <button
+                onClick={submitOrder}
+                disabled={loading}
+                className="w-full py-3.5 rounded-2xl text-white font-bold text-base transition-all active:scale-[0.98] shadow-lg disabled:opacity-60 flex items-center justify-center gap-2"
+                style={{ backgroundColor: t.accent }}
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                {loading ? "Mengirim Pesanan..." : "Konfirmasi Pesanan"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step: Success */}
+        {step === "success" && (
+          <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
+              style={{ backgroundColor: t.accent + "18" }}
+            >
+              <CheckCircle2 className="w-10 h-10" style={{ color: t.accent }} />
+            </motion.div>
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Pesanan Masuk! 🎉</h2>
+            <p className="text-gray-500 text-sm mb-3">
+              Terima kasih <strong>{name}</strong>! Pesanan kamu sudah diterima.
+            </p>
+            {tableNumber && (
+              <div
+                className="px-4 py-2 rounded-2xl text-sm font-bold mb-4"
+                style={{ backgroundColor: t.accent + "15", color: t.accent }}
+              >
+                🪑 Akan diantar ke Meja {tableNumber}
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mb-6 font-mono">#{orderId.slice(0, 8).toUpperCase()}</p>
+            <button
+              onClick={onClose}
+              className="px-8 py-3 rounded-2xl text-white font-bold transition-all active:scale-[0.98]"
+              style={{ backgroundColor: t.accent }}
+            >
+              Tutup
+            </button>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
 export default function Storefront() {
   const [, params] = useRoute("/store/:slug");
   const slug = params?.slug || "";
   const search = useSearch();
   const tableNumber = new URLSearchParams(search).get("table");
   const [cartOpen, setCartOpen] = useState(false);
-  const [cart, setCart] = useState<{ id: string; name: string; price: number; qty: number }[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -285,18 +589,20 @@ export default function Storefront() {
     });
   };
 
+  const changeQty = (id: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((c) => c.id === id ? { ...c, qty: c.qty + delta } : c)
+        .filter((c) => c.qty > 0)
+    );
+  };
+
+  const removeFromCart = (id: string) => {
+    setCart((prev) => prev.filter((c) => c.id !== id));
+  };
+
   const cartTotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
-
-  const orderViaWhatsApp = () => {
-    if (!store?.whatsapp) return;
-    const wa = store.whatsapp.startsWith("0") ? "62" + store.whatsapp.slice(1) : store.whatsapp;
-    const items = cart.map((c) => `• ${c.name} x${c.qty} = ${formatIDR(c.price * c.qty)}`).join("\n");
-    const text = encodeURIComponent(
-      `Halo ${store.name}! 👋\n\nSaya ingin memesan:\n${items}\n\n*Total: ${formatIDR(cartTotal)}*\n\nMohon konfirmasinya 🙏`
-    );
-    window.open(`https://wa.me/${wa}?text=${text}`, "_blank");
-  };
 
   const handleBuySingle = (productName: string) => {
     if (!store?.whatsapp) return alert("Toko belum mengatur nomor WhatsApp");
@@ -325,9 +631,7 @@ export default function Storefront() {
   }, [storeUrl]);
 
   const shareViaWhatsApp = useCallback(() => {
-    const text = encodeURIComponent(
-      `Cek toko *${store?.name}* di sini! 🛍️\n${storeUrl}`
-    );
+    const text = encodeURIComponent(`Cek toko *${store?.name}* di sini! 🛍️\n${storeUrl}`);
     window.open(`https://wa.me/?text=${text}`, "_blank");
   }, [store?.name, storeUrl]);
 
@@ -339,16 +643,17 @@ export default function Storefront() {
   const shareNative = useCallback(async () => {
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: store?.name || "Toko Online",
-          text: `Cek toko ${store?.name} di UMKM Go!`,
-          url: storeUrl,
-        });
+        await navigator.share({ title: store?.name || "Toko Online", text: `Cek toko ${store?.name} di UMKM Go!`, url: storeUrl });
         return;
       } catch {}
     }
     setShareOpen(true);
   }, [store?.name, storeUrl]);
+
+  const handleCheckoutClose = () => {
+    setCartOpen(false);
+    setCart([]);
+  };
 
   if (isLoading) {
     return (
@@ -375,6 +680,61 @@ export default function Storefront() {
 
   return (
     <div className={`min-h-screen ${t.bodyBg} pb-28`}>
+      {/* Checkout Modal */}
+      <AnimatePresence>
+        {cartOpen && cart.length > 0 && (
+          <CheckoutModal
+            cart={cart}
+            cartTotal={cartTotal}
+            slug={slug}
+            storeName={store.name}
+            tableNumber={tableNumber}
+            whatsapp={store.whatsapp}
+            theme={t}
+            onClose={handleCheckoutClose}
+            onQtyChange={changeQty}
+            onRemove={removeFromCart}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Share Modal */}
+      <AnimatePresence>
+        {shareOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShareOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              className="relative w-full max-w-sm bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-bold text-gray-900">Bagikan Toko</h3>
+                <button onClick={() => setShareOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2.5 mb-4">
+                <p className="flex-1 text-xs text-gray-500 truncate font-mono">{storeUrl}</p>
+                <button onClick={copyLink} className="flex items-center gap-1 text-xs font-semibold" style={{ color: t.accent }}>
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? "Tersalin!" : "Salin"}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={shareViaWhatsApp} className="flex items-center justify-center gap-2 py-3 rounded-xl bg-green-500 text-white text-sm font-semibold">
+                  <MessageCircle className="w-4 h-4" />WhatsApp
+                </button>
+                <button onClick={shareViaX} className="flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold">
+                  <ExternalLink className="w-4 h-4" />Twitter/X
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Hero Header */}
       <div className={`${t.header} relative overflow-hidden`}>
         <div className="absolute inset-0 opacity-20" style={{
@@ -415,21 +775,24 @@ export default function Storefront() {
       {/* Table Number Banner */}
       {tableNumber && (
         <div className="max-w-4xl mx-auto px-4 mt-3 relative z-10">
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
             className="rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm"
             style={{ backgroundColor: t.accent + "18", border: `1.5px solid ${t.accent}33` }}
           >
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-extrabold text-base flex-shrink-0 shadow"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-extrabold text-lg flex-shrink-0 shadow"
               style={{ backgroundColor: t.accent }}
             >
               {tableNumber}
             </div>
-            <div>
+            <div className="flex-1">
               <p className="font-bold text-sm" style={{ color: t.accent }}>Meja {tableNumber}</p>
-              <p className="text-xs text-gray-500">Pesanan Anda akan diantar ke meja ini</p>
+              <p className="text-xs text-gray-500">Pilih menu & pesan langsung — pesanan diantar ke meja ini</p>
             </div>
-          </div>
+            <QrCode className="w-5 h-5 flex-shrink-0" style={{ color: t.accent + "80" }} />
+          </motion.div>
         </div>
       )}
 
@@ -482,7 +845,6 @@ export default function Storefront() {
         {store.products && store.products.length > 0 && (
           <div className="mb-4 space-y-2">
             <div className="flex gap-2">
-              {/* Search Input */}
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -496,16 +858,11 @@ export default function Storefront() {
                   style={searchQuery ? { borderColor: t.accent } : {}}
                 />
                 {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
+                  <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                     <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
-
-              {/* Filter Toggle Button */}
               <button
                 onClick={() => setFilterOpen((v) => !v)}
                 className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
@@ -527,7 +884,6 @@ export default function Storefront() {
               </button>
             </div>
 
-            {/* Filter Panel */}
             <AnimatePresence>
               {filterOpen && (
                 <motion.div
@@ -538,76 +894,40 @@ export default function Storefront() {
                   className="overflow-hidden"
                 >
                   <div className={`${t.cardBg} border-2 rounded-2xl p-4 space-y-4`} style={{ borderColor: t.accent + "33" }}>
-                    {/* Price Range */}
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Rentang Harga</p>
                       {priceRange.min !== priceRange.max && (
-                        <p className="text-xs text-gray-400 mb-2">
-                          {formatIDR(priceRange.min)} — {formatIDR(priceRange.max)}
-                        </p>
+                        <p className="text-xs text-gray-400 mb-2">{formatIDR(priceRange.min)} — {formatIDR(priceRange.max)}</p>
                       )}
                       <div className="flex items-center gap-2">
                         <div className="flex-1 relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Min</span>
-                          <input
-                            type="number"
-                            placeholder={String(priceRange.min)}
-                            value={priceMin}
-                            onChange={(e) => setPriceMin(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gray-400 bg-gray-50"
-                            min={0}
-                          />
+                          <input type="number" placeholder={String(priceRange.min)} value={priceMin} onChange={(e) => setPriceMin(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gray-400 bg-gray-50" min={0} />
                         </div>
                         <span className="text-gray-300 font-bold">—</span>
                         <div className="flex-1 relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Max</span>
-                          <input
-                            type="number"
-                            placeholder={String(priceRange.max)}
-                            value={priceMax}
-                            onChange={(e) => setPriceMax(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gray-400 bg-gray-50"
-                            min={0}
-                          />
+                          <input type="number" placeholder={String(priceRange.max)} value={priceMax} onChange={(e) => setPriceMax(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gray-400 bg-gray-50" min={0} />
                         </div>
                       </div>
                     </div>
-
-                    {/* Sort */}
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Urutkan</p>
                       <div className="flex gap-2 flex-wrap">
-                        {(["default", "price-asc", "price-desc"] as SortOption[]).map((opt) => {
-                          const labels: Record<SortOption, string> = {
-                            default: "Default",
-                            "price-asc": "Harga Termurah",
-                            "price-desc": "Harga Termahal",
-                          };
-                          const active = sortBy === opt;
-                          return (
-                            <button
-                              key={opt}
-                              onClick={() => setSortBy(opt)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${
-                                active ? "text-white border-current" : "bg-white border-gray-200 text-gray-600"
-                              }`}
-                              style={active ? { backgroundColor: t.accent, borderColor: t.accent } : {}}
-                            >
-                              {labels[opt]}
-                            </button>
-                          );
-                        })}
+                        {(["default", "price-asc", "price-desc"] as SortOption[]).map((opt) => (
+                          <button key={opt} onClick={() => setSortBy(opt)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all ${sortBy === opt ? "text-white" : "border-gray-200 text-gray-600"}`}
+                            style={sortBy === opt ? { backgroundColor: t.accent, borderColor: t.accent } : {}}>
+                            {opt === "default" ? "Default" : opt === "price-asc" ? "Harga Terendah" : "Harga Tertinggi"}
+                          </button>
+                        ))}
                       </div>
                     </div>
-
-                    {/* Clear Filters */}
                     {hasActiveFilter && (
-                      <button
-                        onClick={clearFilters}
-                        className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 underline underline-offset-2"
-                      >
-                        <X className="w-3 h-3" />
-                        Reset semua filter
+                      <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                        <X className="w-3.5 h-3.5" />Reset semua filter
                       </button>
                     )}
                   </div>
@@ -615,329 +935,96 @@ export default function Storefront() {
               )}
             </AnimatePresence>
 
-            {/* Active Filter Summary */}
             {hasActiveFilter && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-gray-500">
-                  Menampilkan <strong>{filteredProducts.length}</strong> dari {store.products.length} produk
-                </span>
-                {searchQuery && (
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                    style={{ backgroundColor: t.accent }}
-                  >
-                    "{searchQuery}"
-                    <button onClick={() => setSearchQuery("")}><X className="w-3 h-3" /></button>
-                  </span>
-                )}
-                {(priceMin !== "" || priceMax !== "") && (
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                    style={{ backgroundColor: t.accent }}
-                  >
-                    {priceMin ? formatIDR(Number(priceMin)) : "0"} – {priceMax ? formatIDR(Number(priceMax)) : "∞"}
-                    <button onClick={() => { setPriceMin(""); setPriceMax(""); }}><X className="w-3 h-3" /></button>
-                  </span>
-                )}
-                {sortBy !== "default" && (
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                    style={{ backgroundColor: t.accent }}
-                  >
-                    {sortBy === "price-asc" ? "Termurah" : "Termahal"}
-                    <button onClick={() => setSortBy("default")}><X className="w-3 h-3" /></button>
-                  </span>
-                )}
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span>Menampilkan {filteredProducts.length} dari {store.products?.length || 0} produk</span>
+                <button onClick={clearFilters} className="text-xs underline" style={{ color: t.accent }}>Reset</button>
               </div>
             )}
           </div>
         )}
 
         {/* Product Grid */}
-        {!store.products || store.products.length === 0 ? (
-          <div className={`text-center py-16 ${t.cardBg} rounded-2xl border-2 border-dashed ${t.cardBorder}`}>
-            <span className="text-5xl">{t.emoji}</span>
-            <p className="text-gray-500 mt-3">Toko ini belum menambahkan produk.</p>
-            <p className="text-gray-400 text-sm">Silakan hubungi toko untuk info lebih lanjut.</p>
+        {filteredProducts.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="text-gray-400 text-sm">Produk tidak ditemukan</p>
           </div>
-        ) : filteredProducts.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`text-center py-16 ${t.cardBg} rounded-2xl border-2 border-dashed ${t.cardBorder}`}
-          >
-            <Search className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">Produk tidak ditemukan</p>
-            <p className="text-gray-400 text-sm mt-1">Coba ubah kata kunci atau filter harga</p>
-            <button
-              onClick={clearFilters}
-              className="mt-4 text-sm font-semibold underline underline-offset-2"
-              style={{ color: t.accent }}
-            >
-              Reset Filter
-            </button>
-          </motion.div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            <AnimatePresence mode="popLayout">
-              {filteredProducts.map((product, idx) => {
-                const inCart = cart.find((c) => c.id === product.id);
-                return (
-                  <motion.div
-                    key={product.id}
-                    layout
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: idx * 0.03, duration: 0.25 }}
-                  >
-                    <div className={`${t.cardBg} rounded-2xl border-2 ${t.cardBorder} overflow-hidden transition-all hover:shadow-lg flex flex-col h-full relative`}>
-                      <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                        {product.imageUrl ? (
-                          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-5xl">
-                            {t.emoji}
-                          </div>
-                        )}
-                        {inCart && (
-                          <div
-                            className="absolute top-2 right-2 w-6 h-6 rounded-full text-white text-xs flex items-center justify-center font-bold shadow-lg"
-                            style={{ backgroundColor: t.accent }}
-                          >
-                            {inCart.qty}
-                          </div>
-                        )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+            {filteredProducts.map((product, idx) => {
+              const inCart = cart.find((c) => c.id === product.id);
+              return (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.03 }}
+                  className={`${t.cardBg} rounded-2xl border-2 overflow-hidden shadow-sm transition-all ${t.cardBorder}`}
+                >
+                  {/* Image area */}
+                  <div className="relative aspect-square bg-gray-100 overflow-hidden">
+                    {product.imageUrl ? (
+                      <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-4xl opacity-30">{t.emoji}</span>
                       </div>
-                      <div className="p-3 flex flex-col flex-1">
-                        <p className="font-semibold text-gray-900 text-sm line-clamp-2 flex-1">{product.name}</p>
-                        {product.description && (
-                          <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{product.description}</p>
-                        )}
-                        <div className="flex items-center justify-between mt-2 gap-1">
-                          <span
-                            className={`text-sm font-bold ${t.badgePriceBg} ${t.badgePriceText} px-2 py-0.5 rounded-lg`}
-                          >
-                            {formatIDR(Number(product.price))}
-                          </span>
-                          <button
-                            onClick={() => addToCart(product)}
-                            className="w-8 h-8 rounded-full text-white text-lg flex items-center justify-center shadow-md transition-transform active:scale-90"
-                            style={{ backgroundColor: t.accent }}
-                            aria-label="Tambah ke keranjang"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
+                    )}
+                    <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold ${t.badgePriceBg} ${t.badgePriceText}`}>
+                      {formatIDR(Number(product.price))}
                     </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+                    {inCart && (
+                      <div className="absolute top-2 left-2 w-5 h-5 rounded-full bg-white shadow flex items-center justify-center">
+                        <span className="text-[10px] font-extrabold" style={{ color: t.accent }}>{inCart.qty}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-3">
+                    <h3 className="font-bold text-sm text-gray-900 leading-tight mb-0.5 line-clamp-2">{product.name}</h3>
+                    {product.description && (
+                      <p className="text-xs text-gray-400 line-clamp-2 mb-2">{product.description}</p>
+                    )}
+                    <button
+                      onClick={() => addToCart(product)}
+                      className="w-full py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-[0.97] flex items-center justify-center gap-1"
+                      style={{ backgroundColor: t.accent }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      {inCart ? "Tambah Lagi" : "Tambah"}
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Floating WhatsApp Order Bar */}
-      {store.whatsapp && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 px-4 py-4 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-2xl">
-          <div className="max-w-4xl mx-auto">
-            {cart.length > 0 ? (
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setCartOpen(true)}
-                  className={`flex-1 py-3 px-4 rounded-xl border-2 font-semibold text-sm transition-all`}
-                  style={{ borderColor: t.accent, color: t.accent }}
-                >
-                  Lihat Keranjang ({cartCount})
-                </button>
-                <button
-                  onClick={orderViaWhatsApp}
-                  className={`flex-1 py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 ${t.waBtn} ${t.waBtnHover}`}
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Pesan via WhatsApp
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => store.whatsapp && handleBuySingle("menu pilihan saya")}
-                className={`w-full py-3.5 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 ${t.waBtn} ${t.waBtnHover}`}
-              >
-                <MessageCircle className="w-5 h-5" />
-                Tanya & Pesan via WhatsApp
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Cart Sheet */}
-      {cartOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setCartOpen(false)} />
-          <motion.div
-            initial={{ opacity: 0, y: 80 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 80 }}
-            className="relative bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden shadow-2xl"
-          >
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h3 className="font-bold text-lg text-gray-900">Keranjang Pesanan</h3>
-              <button
-                onClick={() => setCartOpen(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
-              >
-                ×
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-4 space-y-3">
-              {cart.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm truncate">{item.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{formatIDR(item.price)} / item</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, qty: c.qty - 1 } : c).filter((c) => c.qty > 0))}
-                      className="w-7 h-7 rounded-full bg-white border border-gray-200 text-gray-700 flex items-center justify-center font-bold"
-                    >−</button>
-                    <span className="w-6 text-center text-sm font-bold">{item.qty}</span>
-                    <button
-                      onClick={() => setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, qty: c.qty + 1 } : c))}
-                      className="w-7 h-7 rounded-full text-white flex items-center justify-center font-bold"
-                      style={{ backgroundColor: t.accent }}
-                    >+</button>
-                  </div>
-                  <span className="text-sm font-bold text-gray-900 w-20 text-right flex-shrink-0">{formatIDR(item.price * item.qty)}</span>
-                </div>
-              ))}
-            </div>
-            <div className={`p-5 border-t border-gray-100 ${t.accentLight} rounded-b-3xl sm:rounded-b-2xl`}>
-              <div className="flex items-center justify-between mb-4">
-                <span className="font-semibold text-gray-700">Total Pesanan</span>
-                <span className="text-xl font-extrabold" style={{ color: t.accent }}>{formatIDR(cartTotal)}</span>
-              </div>
-              <button
-                onClick={() => { setCartOpen(false); orderViaWhatsApp(); }}
-                className={`w-full py-4 rounded-xl text-white font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform ${t.waBtn} ${t.waBtnHover}`}
-              >
-                <MessageCircle className="w-5 h-5" />
-                Pesan via WhatsApp
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Share Modal */}
+      {/* Sticky Cart Bar */}
       <AnimatePresence>
-        {shareOpen && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/50"
-              onClick={() => setShareOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 60 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 60 }}
-              transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="relative bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
+        {cartCount > 0 && !cartOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 60 }}
+            className="fixed bottom-0 left-0 right-0 px-4 pb-5 pt-3 z-40"
+          >
+            <button
+              onClick={() => setCartOpen(true)}
+              className="w-full max-w-md mx-auto flex items-center justify-between px-5 py-4 rounded-2xl text-white shadow-2xl transition-all active:scale-[0.98]"
+              style={{ backgroundColor: t.accent }}
             >
-              {/* Handle */}
-              <div className="flex justify-center pt-3 pb-1 sm:hidden">
-                <div className="w-10 h-1 rounded-full bg-gray-200" />
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-extrabold">
+                  {cartCount}
+                </div>
+                <span className="font-semibold text-sm">Lihat Pesanan</span>
               </div>
-
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <h3 className="font-bold text-lg text-gray-900">Bagikan Toko</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Sebarkan link toko kamu!</p>
-                  </div>
-                  <button
-                    onClick={() => setShareOpen(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* URL Preview */}
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-50 border border-gray-200 mb-5">
-                  <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <p className="text-xs text-gray-600 flex-1 truncate font-mono">{storeUrl}</p>
-                </div>
-
-                {/* Share Options */}
-                <div className="grid grid-cols-3 gap-3 mb-5">
-                  {/* Copy Link */}
-                  <button
-                    onClick={copyLink}
-                    className="flex flex-col items-center gap-2 p-3 rounded-2xl border-2 border-gray-100 hover:border-gray-200 transition-all active:scale-95"
-                  >
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${copied ? "bg-green-100" : "bg-gray-100"}`}>
-                      {copied ? (
-                        <Check className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <Copy className="w-5 h-5 text-gray-600" />
-                      )}
-                    </div>
-                    <span className="text-xs font-semibold text-gray-600">
-                      {copied ? "Tersalin!" : "Salin Link"}
-                    </span>
-                  </button>
-
-                  {/* WhatsApp */}
-                  <button
-                    onClick={() => { shareViaWhatsApp(); setShareOpen(false); }}
-                    className="flex flex-col items-center gap-2 p-3 rounded-2xl border-2 border-gray-100 hover:border-green-200 transition-all active:scale-95"
-                  >
-                    <div className="w-11 h-11 rounded-full bg-green-50 flex items-center justify-center">
-                      <svg viewBox="0 0 24 24" className="w-5 h-5 fill-green-500">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                      </svg>
-                    </div>
-                    <span className="text-xs font-semibold text-gray-600">WhatsApp</span>
-                  </button>
-
-                  {/* X / Twitter */}
-                  <button
-                    onClick={() => { shareViaX(); setShareOpen(false); }}
-                    className="flex flex-col items-center gap-2 p-3 rounded-2xl border-2 border-gray-100 hover:border-gray-300 transition-all active:scale-95"
-                  >
-                    <div className="w-11 h-11 rounded-full bg-gray-900 flex items-center justify-center">
-                      <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                      </svg>
-                    </div>
-                    <span className="text-xs font-semibold text-gray-600">X / Twitter</span>
-                  </button>
-                </div>
-
-                {/* Copy feedback */}
-                <AnimatePresence>
-                  {copied && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 6 }}
-                      className="flex items-center gap-2 justify-center py-2 px-4 rounded-xl bg-green-50 border border-green-100"
-                    >
-                      <Check className="w-4 h-4 text-green-600" />
-                      <span className="text-sm text-green-700 font-medium">Link berhasil disalin!</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          </div>
+              <span className="font-extrabold">{formatIDR(cartTotal)}</span>
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

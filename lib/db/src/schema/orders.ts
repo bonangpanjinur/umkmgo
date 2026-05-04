@@ -8,6 +8,7 @@ export const ordersTable = pgTable("orders", {
   buyerName: varchar("buyer_name", { length: 255 }).notNull(),
   buyerPhone: varchar("buyer_phone", { length: 50 }).notNull(),
   buyerAddress: text("buyer_address"),
+  tableNumber: varchar("table_number", { length: 50 }),
   items: text("items").notNull(),
   totalAmount: doublePrecision("total_amount").notNull(),
   status: varchar("status", { length: 50 }).notNull().default("pending"),
