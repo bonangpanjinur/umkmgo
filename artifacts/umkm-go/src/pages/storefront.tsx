@@ -1,9 +1,9 @@
 import { useRoute } from "wouter";
 import { useGetStoreBySlug } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, MessageCircle, Store as StoreIcon, Loader2, MapPin, Phone, Star, Clock, ChevronRight } from "lucide-react";
-import { motion } from "framer-motion";
-import { useState } from "react";
+import { ShoppingBag, MessageCircle, Store as StoreIcon, Loader2, MapPin, Phone, Star, Clock, ChevronRight, Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useMemo } from "react";
 
 type ThemeKey = "coffee" | "fastfood" | "snack" | "bakery" | "warung" | "drinks" | "catering" | "generic";
 
@@ -208,16 +208,70 @@ function formatIDR(num: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(num);
 }
 
+type SortOption = "default" | "price-asc" | "price-desc";
+
 export default function Storefront() {
   const [, params] = useRoute("/store/:slug");
   const slug = params?.slug || "";
   const [cartOpen, setCartOpen] = useState(false);
   const [cart, setCart] = useState<{ id: string; name: string; price: number; qty: number }[]>([]);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [priceMin, setPriceMin] = useState<string>("");
+  const [priceMax, setPriceMax] = useState<string>("");
+  const [sortBy, setSortBy] = useState<SortOption>("default");
+
   const { data: store, isLoading, error } = useGetStoreBySlug(slug);
 
   const themeKey = getThemeKey(store?.categoryName);
   const t = THEMES[themeKey];
+
+  const priceRange = useMemo(() => {
+    if (!store?.products || store.products.length === 0) return { min: 0, max: 0 };
+    const prices = store.products.map((p) => Number(p.price));
+    return { min: Math.min(...prices), max: Math.max(...prices) };
+  }, [store?.products]);
+
+  const filteredProducts = useMemo(() => {
+    if (!store?.products) return [];
+    let list = [...store.products];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.description && p.description.toLowerCase().includes(q))
+      );
+    }
+
+    const minVal = priceMin !== "" ? Number(priceMin) : null;
+    const maxVal = priceMax !== "" ? Number(priceMax) : null;
+    if (minVal !== null && !isNaN(minVal)) {
+      list = list.filter((p) => Number(p.price) >= minVal);
+    }
+    if (maxVal !== null && !isNaN(maxVal)) {
+      list = list.filter((p) => Number(p.price) <= maxVal);
+    }
+
+    if (sortBy === "price-asc") {
+      list = list.sort((a, b) => Number(a.price) - Number(b.price));
+    } else if (sortBy === "price-desc") {
+      list = list.sort((a, b) => Number(b.price) - Number(a.price));
+    }
+
+    return list;
+  }, [store?.products, searchQuery, priceMin, priceMax, sortBy]);
+
+  const hasActiveFilter = searchQuery.trim() !== "" || priceMin !== "" || priceMax !== "" || sortBy !== "default";
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setPriceMin("");
+    setPriceMax("");
+    setSortBy("default");
+  };
 
   const addToCart = (product: any) => {
     setCart((prev) => {
@@ -278,13 +332,10 @@ export default function Storefront() {
           backgroundImage: `radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 0%, transparent 40%)`
         }} />
         <div className="relative max-w-4xl mx-auto px-4 pt-10 pb-16">
-          {/* Theme Badge */}
           <div className="flex items-center gap-2 mb-6">
             <span className="text-2xl">{t.emoji}</span>
             <span className="text-white/80 text-sm font-medium">{store.categoryName || "F&B"}</span>
           </div>
-
-          {/* Store Identity */}
           <div className="flex items-end gap-4">
             <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white rounded-2xl p-1.5 shadow-2xl flex-shrink-0">
               <div className="w-full h-full rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center">
@@ -330,7 +381,8 @@ export default function Storefront() {
 
       {/* Product Section */}
       <div className="max-w-4xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-4">
+        {/* Section Header */}
+        <div className="flex items-center justify-between mb-3">
           <h2 className={`text-lg font-bold ${t.sectionTitle} flex items-center gap-2`}>
             <ShoppingBag className="w-5 h-5" style={{ color: t.accent }} />
             Daftar Menu
@@ -347,69 +399,263 @@ export default function Storefront() {
           )}
         </div>
 
+        {/* Search & Filter Bar */}
+        {store.products && store.products.length > 0 && (
+          <div className="mb-4 space-y-2">
+            <div className="flex gap-2">
+              {/* Search Input */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari produk..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`w-full pl-9 pr-4 py-2.5 rounded-xl border-2 text-sm bg-white focus:outline-none transition-colors ${
+                    searchQuery ? "border-current" : "border-gray-200 focus:border-gray-300"
+                  }`}
+                  style={searchQuery ? { borderColor: t.accent } : {}}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Toggle Button */}
+              <button
+                onClick={() => setFilterOpen((v) => !v)}
+                className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
+                  filterOpen || (priceMin !== "" || priceMax !== "" || sortBy !== "default")
+                    ? "text-white border-current"
+                    : "bg-white border-gray-200 text-gray-600"
+                }`}
+                style={
+                  filterOpen || (priceMin !== "" || priceMax !== "" || sortBy !== "default")
+                    ? { backgroundColor: t.accent, borderColor: t.accent }
+                    : {}
+                }
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="hidden sm:inline">Filter</span>
+                {(priceMin !== "" || priceMax !== "" || sortBy !== "default") && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                )}
+              </button>
+            </div>
+
+            {/* Filter Panel */}
+            <AnimatePresence>
+              {filterOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className={`${t.cardBg} border-2 rounded-2xl p-4 space-y-4`} style={{ borderColor: t.accent + "33" }}>
+                    {/* Price Range */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Rentang Harga</p>
+                      {priceRange.min !== priceRange.max && (
+                        <p className="text-xs text-gray-400 mb-2">
+                          {formatIDR(priceRange.min)} — {formatIDR(priceRange.max)}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Min</span>
+                          <input
+                            type="number"
+                            placeholder={String(priceRange.min)}
+                            value={priceMin}
+                            onChange={(e) => setPriceMin(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gray-400 bg-gray-50"
+                            min={0}
+                          />
+                        </div>
+                        <span className="text-gray-300 font-bold">—</span>
+                        <div className="flex-1 relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">Max</span>
+                          <input
+                            type="number"
+                            placeholder={String(priceRange.max)}
+                            value={priceMax}
+                            onChange={(e) => setPriceMax(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-gray-400 bg-gray-50"
+                            min={0}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sort */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Urutkan</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {(["default", "price-asc", "price-desc"] as SortOption[]).map((opt) => {
+                          const labels: Record<SortOption, string> = {
+                            default: "Default",
+                            "price-asc": "Harga Termurah",
+                            "price-desc": "Harga Termahal",
+                          };
+                          const active = sortBy === opt;
+                          return (
+                            <button
+                              key={opt}
+                              onClick={() => setSortBy(opt)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${
+                                active ? "text-white border-current" : "bg-white border-gray-200 text-gray-600"
+                              }`}
+                              style={active ? { backgroundColor: t.accent, borderColor: t.accent } : {}}
+                            >
+                              {labels[opt]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Clear Filters */}
+                    {hasActiveFilter && (
+                      <button
+                        onClick={clearFilters}
+                        className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 underline underline-offset-2"
+                      >
+                        <X className="w-3 h-3" />
+                        Reset semua filter
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Active Filter Summary */}
+            {hasActiveFilter && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-500">
+                  Menampilkan <strong>{filteredProducts.length}</strong> dari {store.products.length} produk
+                </span>
+                {searchQuery && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                    style={{ backgroundColor: t.accent }}
+                  >
+                    "{searchQuery}"
+                    <button onClick={() => setSearchQuery("")}><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {(priceMin !== "" || priceMax !== "") && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                    style={{ backgroundColor: t.accent }}
+                  >
+                    {priceMin ? formatIDR(Number(priceMin)) : "0"} – {priceMax ? formatIDR(Number(priceMax)) : "∞"}
+                    <button onClick={() => { setPriceMin(""); setPriceMax(""); }}><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {sortBy !== "default" && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                    style={{ backgroundColor: t.accent }}
+                  >
+                    {sortBy === "price-asc" ? "Termurah" : "Termahal"}
+                    <button onClick={() => setSortBy("default")}><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Product Grid */}
         {!store.products || store.products.length === 0 ? (
           <div className={`text-center py-16 ${t.cardBg} rounded-2xl border-2 border-dashed ${t.cardBorder}`}>
             <span className="text-5xl">{t.emoji}</span>
             <p className="text-gray-500 mt-3">Toko ini belum menambahkan produk.</p>
             <p className="text-gray-400 text-sm">Silakan hubungi toko untuk info lebih lanjut.</p>
           </div>
+        ) : filteredProducts.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`text-center py-16 ${t.cardBg} rounded-2xl border-2 border-dashed ${t.cardBorder}`}
+          >
+            <Search className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 font-medium">Produk tidak ditemukan</p>
+            <p className="text-gray-400 text-sm mt-1">Coba ubah kata kunci atau filter harga</p>
+            <button
+              onClick={clearFilters}
+              className="mt-4 text-sm font-semibold underline underline-offset-2"
+              style={{ color: t.accent }}
+            >
+              Reset Filter
+            </button>
+          </motion.div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            {store.products.map((product, idx) => {
-              const inCart = cart.find((c) => c.id === product.id);
-              return (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.04, duration: 0.3 }}
-                >
-                  <div className={`${t.cardBg} rounded-2xl border-2 ${t.cardBorder} overflow-hidden transition-all hover:shadow-lg flex flex-col h-full relative`}>
-                    {/* Product Image */}
-                    <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                      {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-5xl">
-                          {t.emoji}
+            <AnimatePresence mode="popLayout">
+              {filteredProducts.map((product, idx) => {
+                const inCart = cart.find((c) => c.id === product.id);
+                return (
+                  <motion.div
+                    key={product.id}
+                    layout
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: idx * 0.03, duration: 0.25 }}
+                  >
+                    <div className={`${t.cardBg} rounded-2xl border-2 ${t.cardBorder} overflow-hidden transition-all hover:shadow-lg flex flex-col h-full relative`}>
+                      <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                        {product.imageUrl ? (
+                          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-5xl">
+                            {t.emoji}
+                          </div>
+                        )}
+                        {inCart && (
+                          <div
+                            className="absolute top-2 right-2 w-6 h-6 rounded-full text-white text-xs flex items-center justify-center font-bold shadow-lg"
+                            style={{ backgroundColor: t.accent }}
+                          >
+                            {inCart.qty}
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3 flex flex-col flex-1">
+                        <p className="font-semibold text-gray-900 text-sm line-clamp-2 flex-1">{product.name}</p>
+                        {product.description && (
+                          <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{product.description}</p>
+                        )}
+                        <div className="flex items-center justify-between mt-2 gap-1">
+                          <span
+                            className={`text-sm font-bold ${t.badgePriceBg} ${t.badgePriceText} px-2 py-0.5 rounded-lg`}
+                          >
+                            {formatIDR(Number(product.price))}
+                          </span>
+                          <button
+                            onClick={() => addToCart(product)}
+                            className="w-8 h-8 rounded-full text-white text-lg flex items-center justify-center shadow-md transition-transform active:scale-90"
+                            style={{ backgroundColor: t.accent }}
+                            aria-label="Tambah ke keranjang"
+                          >
+                            +
+                          </button>
                         </div>
-                      )}
-                      {inCart && (
-                        <div
-                          className="absolute top-2 right-2 w-6 h-6 rounded-full text-white text-xs flex items-center justify-center font-bold shadow-lg"
-                          style={{ backgroundColor: t.accent }}
-                        >
-                          {inCart.qty}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Product Info */}
-                    <div className="p-3 flex flex-col flex-1">
-                      <p className="font-semibold text-gray-900 text-sm line-clamp-2 flex-1">{product.name}</p>
-                      {product.description && (
-                        <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{product.description}</p>
-                      )}
-                      <div className="flex items-center justify-between mt-2 gap-1">
-                        <span
-                          className={`text-sm font-bold ${t.badgePriceBg} ${t.badgePriceText} px-2 py-0.5 rounded-lg`}
-                        >
-                          {formatIDR(Number(product.price))}
-                        </span>
-                        <button
-                          onClick={() => addToCart(product)}
-                          className="w-8 h-8 rounded-full text-white text-lg flex items-center justify-center shadow-md transition-transform active:scale-90"
-                          style={{ backgroundColor: t.accent }}
-                          aria-label="Tambah ke keranjang"
-                        >
-                          +
-                        </button>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         )}
       </div>
