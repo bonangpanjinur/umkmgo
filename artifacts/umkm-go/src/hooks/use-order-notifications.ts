@@ -4,7 +4,7 @@ import { listOrders } from "@workspace/api-client-react";
 import { getToken } from "@/lib/auth";
 
 const STORAGE_KEY = "umkm_seen_order_ids";
-const POLL_INTERVAL = 15_000;
+const POLL_INTERVAL = 10_000;
 
 function getSeenIds(): Set<string> {
   try {
@@ -30,6 +30,8 @@ export interface NewOrder {
   id: string;
   buyerName: string;
   totalAmount: number;
+  tableNumber?: string | null;
+  source?: string | null;
   notes?: string | null;
 }
 
@@ -44,7 +46,7 @@ export function useOrderNotifications(enabled: boolean) {
     queryKey: ["orders-notifications"],
     queryFn: () =>
       listOrders(
-        { page: 1, limit: 10 },
+        { page: 1, limit: 20 },
         { request: { headers: { Authorization: `Bearer ${token}` } } }
       ),
     enabled: !!token && enabled,
@@ -74,7 +76,9 @@ export function useOrderNotifications(enabled: boolean) {
           id: o.id,
           buyerName: o.buyerName,
           totalAmount: Number(o.totalAmount),
-          notes: o.notes,
+          tableNumber: o.tableNumber ?? null,
+          source: o.source ?? null,
+          notes: o.notes ?? null,
         }))
       );
       const newIds = newOnes.map((o) => o.id);
