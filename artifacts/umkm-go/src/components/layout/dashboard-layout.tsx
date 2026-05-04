@@ -21,64 +21,81 @@ import {
   BoxesIcon,
   BarChart2,
   QrCode,
+  Bell,
 } from "lucide-react";
 import { useAuth, useLogoutAction } from "@/hooks/use-custom-auth";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { useOrderNotifications } from "@/hooks/use-order-notifications";
+import { useToast } from "@/hooks/use-toast";
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: any;
+  badge?: number;
+}
 
 interface NavSection {
   label: string;
-  items: { href: string; label: string; icon: any }[];
+  items: NavItem[];
 }
 
-const navSections: NavSection[] = [
-  {
-    label: "Utama",
-    items: [
-      { href: "/dashboard", label: "Ringkasan", icon: LayoutDashboard },
-      { href: "/dashboard/pos", label: "Kasir (POS)", icon: ShoppingCart },
-      { href: "/dashboard/kds", label: "Dapur (KDS)", icon: ChefHat },
-    ],
-  },
-  {
-    label: "Produk & Stok",
-    items: [
-      { href: "/dashboard/catalog", label: "Katalog Produk", icon: Package },
-      { href: "/dashboard/bahan-baku", label: "Bahan Baku", icon: Utensils },
-      { href: "/dashboard/stok", label: "Stok & Opname", icon: BoxesIcon },
-    ],
-  },
-  {
-    label: "Penjualan",
-    items: [
-      { href: "/dashboard/orders", label: "Pesanan", icon: Layers },
-      { href: "/dashboard/customers", label: "Pelanggan", icon: Users },
-      { href: "/dashboard/kurir", label: "Kurir", icon: Truck },
-      { href: "/dashboard/marketplace", label: "Marketplace", icon: Globe },
-    ],
-  },
-  {
-    label: "Bisnis",
-    items: [
-      { href: "/dashboard/keuangan", label: "Keuangan", icon: BarChart2 },
-      { href: "/dashboard/karyawan", label: "Karyawan", icon: Users },
-      { href: "/dashboard/payments", label: "Pembayaran", icon: Wallet },
-      { href: "/dashboard/shipping", label: "Pengiriman", icon: Truck },
-    ],
-  },
-  {
-    label: "Pengaturan",
-    items: [
-      { href: "/dashboard/qr-tables", label: "QR Code Meja", icon: QrCode },
-      { href: "/dashboard/templates", label: "Tema Toko", icon: StoreIcon },
-      { href: "/dashboard/domains", label: "Domain", icon: Globe },
-      { href: "/dashboard/seo", label: "SEO", icon: Globe },
-      { href: "/dashboard/settings", label: "Pengaturan", icon: Settings },
-      { href: "/dashboard/billing", label: "Paket & Billing", icon: CreditCard },
-      { href: "/dashboard/support", label: "Bantuan", icon: LifeBuoy },
-    ],
-  },
-];
+function buildNavSections(pendingCount: number): NavSection[] {
+  return [
+    {
+      label: "Utama",
+      items: [
+        { href: "/dashboard", label: "Ringkasan", icon: LayoutDashboard },
+        { href: "/dashboard/pos", label: "Kasir (POS)", icon: ShoppingCart },
+        { href: "/dashboard/kds", label: "Dapur (KDS)", icon: ChefHat },
+      ],
+    },
+    {
+      label: "Produk & Stok",
+      items: [
+        { href: "/dashboard/catalog", label: "Katalog Produk", icon: Package },
+        { href: "/dashboard/bahan-baku", label: "Bahan Baku", icon: Utensils },
+        { href: "/dashboard/stok", label: "Stok & Opname", icon: BoxesIcon },
+      ],
+    },
+    {
+      label: "Penjualan",
+      items: [
+        {
+          href: "/dashboard/orders",
+          label: "Pesanan",
+          icon: Layers,
+          badge: pendingCount,
+        },
+        { href: "/dashboard/customers", label: "Pelanggan", icon: Users },
+        { href: "/dashboard/kurir", label: "Kurir", icon: Truck },
+        { href: "/dashboard/marketplace", label: "Marketplace", icon: Globe },
+      ],
+    },
+    {
+      label: "Bisnis",
+      items: [
+        { href: "/dashboard/keuangan", label: "Keuangan", icon: BarChart2 },
+        { href: "/dashboard/karyawan", label: "Karyawan", icon: Users },
+        { href: "/dashboard/payments", label: "Pembayaran", icon: Wallet },
+        { href: "/dashboard/shipping", label: "Pengiriman", icon: Truck },
+      ],
+    },
+    {
+      label: "Pengaturan",
+      items: [
+        { href: "/dashboard/qr-tables", label: "QR Code Meja", icon: QrCode },
+        { href: "/dashboard/templates", label: "Tema Toko", icon: StoreIcon },
+        { href: "/dashboard/domains", label: "Domain", icon: Globe },
+        { href: "/dashboard/seo", label: "SEO", icon: Globe },
+        { href: "/dashboard/settings", label: "Pengaturan", icon: Settings },
+        { href: "/dashboard/billing", label: "Paket & Billing", icon: CreditCard },
+        { href: "/dashboard/support", label: "Bantuan", icon: LifeBuoy },
+      ],
+    },
+  ];
+}
 
 function NavLink({
   href,
@@ -86,12 +103,14 @@ function NavLink({
   icon: Icon,
   isActive,
   onClick,
+  badge,
 }: {
   href: string;
   label: string;
   icon: any;
   isActive: boolean;
   onClick?: () => void;
+  badge?: number;
 }) {
   return (
     <Link
@@ -100,17 +119,42 @@ function NavLink({
       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-150 text-sm
         ${isActive ? "bg-primary/10 text-primary" : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"}`}
     >
-      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-primary" : "text-gray-400"}`} />
-      <span className="truncate">{label}</span>
+      <Icon
+        className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-primary" : "text-gray-400"}`}
+      />
+      <span className="truncate flex-1">{label}</span>
+      {badge != null && badge > 0 && (
+        <motion.span
+          key={badge}
+          initial={{ scale: 0.6 }}
+          animate={{ scale: 1 }}
+          className="flex-shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none"
+        >
+          {badge > 99 ? "99+" : badge}
+        </motion.span>
+      )}
     </Link>
   );
 }
 
-function SidebarContent({ location, user, logout, onNav }: { location: string; user: any; logout: () => void; onNav?: () => void }) {
+function SidebarContent({
+  location,
+  user,
+  logout,
+  onNav,
+  pendingCount,
+}: {
+  location: string;
+  user: any;
+  logout: () => void;
+  onNav?: () => void;
+  pendingCount: number;
+}) {
+  const sections = buildNavSections(pendingCount);
   return (
     <>
       <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
-        {navSections.map((section) => (
+        {sections.map((section) => (
           <div key={section.label}>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 mb-1">
               {section.label}
@@ -135,8 +179,12 @@ function SidebarContent({ location, user, logout, onNav }: { location: string; u
             {user?.name?.charAt(0) || "U"}
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-sm font-bold text-foreground truncate">{user?.name}</span>
-            <span className="text-xs text-muted-foreground truncate capitalize">{user?.tier ?? "Basic"} Plan</span>
+            <span className="text-sm font-bold text-foreground truncate">
+              {user?.name}
+            </span>
+            <span className="text-xs text-muted-foreground truncate capitalize">
+              {user?.tier ?? "Basic"} Plan
+            </span>
           </div>
         </div>
         <Button
@@ -153,50 +201,119 @@ function SidebarContent({ location, user, logout, onNav }: { location: string; u
   );
 }
 
+function formatIDR(n: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(n);
+}
+
 export function DashboardLayout({ children }: { children: ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { data: user } = useAuth();
   const logout = useLogoutAction();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { toast } = useToast();
+
+  const isLoggedIn = !!user;
+  const { pendingCount, newOrders, clearNewOrders } =
+    useOrderNotifications(isLoggedIn);
 
   useEffect(() => {
     setDrawerOpen(false);
   }, [location]);
 
+  useEffect(() => {
+    if (newOrders.length === 0) return;
+    newOrders.forEach((order) => {
+      const tableMatch = order.notes?.match(/Meja\s+(\d+)/i);
+      const tableInfo = tableMatch ? ` • Meja ${tableMatch[1]}` : "";
+      toast({
+        title: `🛎️ Pesanan Baru${tableInfo}`,
+        description: `${order.buyerName} · ${formatIDR(order.totalAmount)}`,
+        action: (
+          <button
+            onClick={() => setLocation("/dashboard/orders")}
+            className="text-xs font-semibold text-primary underline underline-offset-2"
+          >
+            Lihat
+          </button>
+        ) as any,
+      });
+    });
+    clearNewOrders();
+  }, [newOrders]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Desktop/Tablet-landscape Sidebar — visible at lg (1024px+) */}
+      {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-60 bg-white border-r border-gray-200 fixed inset-y-0 z-10">
         <div className="p-5 flex items-center gap-3 border-b border-gray-100">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
             <StoreIcon className="w-5 h-5 text-white" />
           </div>
-          <span className="font-display font-bold text-xl text-foreground">UMKM Go</span>
+          <span className="font-display font-bold text-xl text-foreground">
+            UMKM Go
+          </span>
         </div>
-        <SidebarContent location={location} user={user} logout={logout} />
+        <SidebarContent
+          location={location}
+          user={user}
+          logout={logout}
+          pendingCount={pendingCount}
+        />
       </aside>
 
-      {/* Mobile + Tablet Portrait Header — visible below lg */}
+      {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center px-3 z-30 gap-2">
         <button
           onClick={() => setDrawerOpen(!drawerOpen)}
           className="p-2 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
           aria-label="Toggle menu"
         >
-          {drawerOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
+          {drawerOpen ? (
+            <X className="w-5 h-5 text-gray-700" />
+          ) : (
+            <Menu className="w-5 h-5 text-gray-700" />
+          )}
         </button>
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
             <StoreIcon className="w-4 h-4 text-white" />
           </div>
-          <span className="font-display font-bold text-base text-foreground truncate">UMKM Go</span>
+          <span className="font-display font-bold text-base text-foreground truncate">
+            UMKM Go
+          </span>
         </div>
+
+        {/* Notification Bell */}
+        <button
+          onClick={() => setLocation("/dashboard/orders")}
+          className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
+          aria-label="Pesanan masuk"
+        >
+          <Bell className="w-5 h-5 text-gray-600" />
+          <AnimatePresence>
+            {pendingCount > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none"
+              >
+                {pendingCount > 99 ? "99+" : pendingCount}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
+
         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0 border border-primary/20">
           {user?.name?.charAt(0)?.toUpperCase() || "U"}
         </div>
       </div>
 
-      {/* Drawer Overlay (mobile + tablet portrait) */}
+      {/* Mobile Drawer Overlay */}
       <AnimatePresence>
         {drawerOpen && (
           <>
@@ -219,6 +336,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                 user={user}
                 logout={logout}
                 onNav={() => setDrawerOpen(false)}
+                pendingCount={pendingCount}
               />
             </motion.aside>
           </>
