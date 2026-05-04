@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useListOrders, useUpdateOrder } from "@workspace/api-client-react";
+import { useListOrders, useUpdateOrder, useGetMyStore } from "@workspace/api-client-react";
 import { getToken } from "@/lib/auth";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { Search, ShoppingCart, Eye, ChevronLeft, ChevronRight, QrCode } from "lucide-react";
+import { Search, ShoppingCart, Eye, ChevronLeft, ChevronRight, QrCode, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { printReceipt } from "@/lib/print-receipt";
 
 const AUTH = () => ({ request: { headers: { Authorization: `Bearer ${getToken()}` } } });
 
@@ -61,6 +62,33 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+
+  const { data: storeData } = useGetMyStore(AUTH());
+  const store = storeData as any;
+
+  const handlePrint = useCallback((order: any) => {
+    printReceipt(
+      {
+        name: store?.name ?? "Toko",
+        description: store?.description,
+        whatsapp: store?.whatsapp,
+        logoUrl: store?.logoUrl,
+        address: store?.address,
+      },
+      {
+        id: order.id,
+        buyerName: order.buyerName,
+        buyerPhone: order.buyerPhone,
+        tableNumber: order.tableNumber,
+        source: order.source,
+        items: order.items ?? [],
+        totalAmount: order.totalAmount,
+        notes: order.notes,
+        paymentStatus: order.paymentStatus,
+        createdAt: order.createdAt,
+      }
+    );
+  }, [store]);
 
   const { data, isLoading, refetch } = useListOrders(
     {
@@ -205,9 +233,14 @@ export default function OrdersPage() {
                           {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: idLocale })}
                         </td>
                         <td className="p-4">
-                          <Button size="sm" variant="ghost" onClick={() => setSelectedOrder(order)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => setSelectedOrder(order)} title="Lihat detail">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handlePrint(order)} title="Cetak struk">
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -338,7 +371,15 @@ export default function OrdersPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 sm:mr-auto"
+                onClick={() => handlePrint(selectedOrder)}
+              >
+                <Printer className="h-4 w-4" />
+                Cetak Struk
+              </Button>
               <Button variant="outline" onClick={() => setSelectedOrder(null)}>Batal</Button>
               <Button
                 disabled={updating}
